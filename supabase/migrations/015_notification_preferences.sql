@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 create table if not exists notification_preferences (
   member_id uuid not null references members(id) on delete cascade,

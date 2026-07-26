@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 create table if not exists meal_plan (
   id uuid primary key default gen_random_uuid(),

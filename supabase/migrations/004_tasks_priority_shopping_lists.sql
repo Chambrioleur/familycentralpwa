@@ -1,9 +1,9 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
--- Aufgaben: Priorität ergänzen
+-- Tasks: add priority
 alter table tasks add column if not exists prioritaet text not null default 'mittel' check (prioritaet in ('niedrig', 'mittel', 'hoch'));
 
--- Einkauf: mehrere Listen + Menge/Einheit getrennt
+-- Shopping: multiple lists + separate quantity/unit
 create table if not exists shopping_lists (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -13,7 +13,7 @@ create table if not exists shopping_lists (
 alter table shopping_items add column if not exists liste_id uuid references shopping_lists(id) on delete cascade;
 alter table shopping_items add column if not exists einheit text;
 
--- Bestehende Einkaufsliste (falls vorhanden) in eine Standard-Liste überführen
+-- Migrate the existing shopping list (if any) into a default list
 insert into shopping_lists (name)
   select 'Einkaufsliste'
   where not exists (select 1 from shopping_lists);

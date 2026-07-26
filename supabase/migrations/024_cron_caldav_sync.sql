@@ -1,12 +1,12 @@
--- Im SQL Editor ausführen. Nutzt dasselbe CRON_SECRET wie beim
--- check-due-notifications-Cron-Job — falls du das schon eingerichtet hast,
--- einfach denselben Wert wieder einsetzen. Falls nicht: erst bei
--- caldav-sync ein CRON_SECRET-Secret eintragen (Dashboard -> Edge
--- Functions -> caldav-sync -> Secrets), dann hier denselben Wert nutzen.
+-- Run in the SQL Editor. Uses the same CRON_SECRET as the
+-- check-due-notifications cron job — if you've already set that up,
+-- just reuse the same value here. If not: first set a CRON_SECRET
+-- secret on caldav-sync (Dashboard -> Edge Functions -> caldav-sync ->
+-- Secrets), then use that same value here.
 
 select cron.schedule(
   'caldav-sync-every-15-min',
-  '*/15 * * * *',  -- alle 15 Minuten
+  '*/15 * * * *',  -- every 15 minutes
   $$
   select net.http_post(
     url := 'https://EURE-PROJEKT-ID.supabase.co/functions/v1/caldav-sync',
@@ -18,6 +18,6 @@ select cron.schedule(
   $$
 );
 
--- Zum Prüfen:
+-- To check:
 select * from cron.job;
 select * from cron.job_run_details order by start_time desc limit 10;

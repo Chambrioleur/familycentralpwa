@@ -1,25 +1,25 @@
--- Familienzentrale — Datenbankschema (Schritt 1)
--- Einspielen: Supabase Dashboard -> SQL Editor -> diese Datei komplett ausführen
+-- Familienzentrale — database schema (step 1)
+-- Run via: Supabase Dashboard -> SQL Editor -> execute this file in full
 
 -- ─────────────────────────────────────────────────────────
--- Erweiterungen
+-- Extensions
 -- ─────────────────────────────────────────────────────────
 create extension if not exists "pgcrypto";
 
 -- ─────────────────────────────────────────────────────────
--- Personen
+-- People
 -- ─────────────────────────────────────────────────────────
 create table members (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  farbe text not null,                       -- z.B. '#3E6C8E'
+  farbe text not null,                       -- e.g. '#3E6C8E'
   rolle text not null check (rolle in ('erwachsen', 'kind')),
-  pin_hash text,                             -- gehashter PIN, nie Klartext
+  pin_hash text,                             -- hashed PIN, never plaintext
   created_at timestamptz not null default now()
 );
 
 -- ─────────────────────────────────────────────────────────
--- Kalender
+-- Calendar
 -- ─────────────────────────────────────────────────────────
 create table calendar_events (
   id uuid primary key default gen_random_uuid(),
@@ -29,12 +29,12 @@ create table calendar_events (
   end_zeit timestamptz not null,
   ganztaegig boolean not null default false,
   member_id uuid references members(id) on delete set null,
-  ist_privat boolean not null default false,  -- vor Kind-Profilen verborgen
-  rrule text,                                 -- Wiederholungsregel, falls vorhanden
+  ist_privat boolean not null default false,  -- hidden from child profiles
+  rrule text,                                 -- recurrence rule, if any
   caldav_uid text unique,
   caldav_etag text,
   quelle text not null default 'app' check (quelle in ('app', 'apple')),
-  geloescht boolean not null default false,   -- soft delete für sauberen Sync
+  geloescht boolean not null default false,   -- soft delete for clean sync
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -42,7 +42,7 @@ create index on calendar_events (start_zeit);
 create index on calendar_events (caldav_uid);
 
 -- ─────────────────────────────────────────────────────────
--- Aufgaben & Erinnerungen (beide als VTODO synchronisiert, getrennte Listen)
+-- Tasks & reminders (both synced as VTODO, separate lists)
 -- ─────────────────────────────────────────────────────────
 create table tasks (
   id uuid primary key default gen_random_uuid(),
@@ -61,7 +61,7 @@ create table reminders (
   id uuid primary key default gen_random_uuid(),
   titel text not null,
   faelligkeit timestamptz,
-  typ text default 'allgemein',               -- z.B. 'frist', 'geburtstag'
+  typ text default 'allgemein',               -- e.g. 'frist', 'geburtstag'
   status text not null default 'offen' check (status in ('offen', 'erledigt')),
   caldav_uid text unique,
   caldav_etag text,
@@ -83,7 +83,7 @@ create table shopping_items (
 );
 
 -- ─────────────────────────────────────────────────────────
--- Dokumente
+-- Documents
 -- ─────────────────────────────────────────────────────────
 create table documents (
   id uuid primary key default gen_random_uuid(),
@@ -97,7 +97,7 @@ create table documents (
 );
 
 -- ─────────────────────────────────────────────────────────
--- Voting / Ideen
+-- Voting / ideas
 -- ─────────────────────────────────────────────────────────
 create table votes (
   id uuid primary key default gen_random_uuid(),
@@ -118,7 +118,7 @@ create table vote_responses (
 );
 
 -- ─────────────────────────────────────────────────────────
--- Wissen (Familien-Wiki)
+-- Knowledge (family wiki)
 -- ─────────────────────────────────────────────────────────
 create table wiki_entries (
   id uuid primary key default gen_random_uuid(),
@@ -130,7 +130,7 @@ create table wiki_entries (
 );
 
 -- ─────────────────────────────────────────────────────────
--- Finanzen
+-- Finances
 -- ─────────────────────────────────────────────────────────
 create table finance_entries (
   id uuid primary key default gen_random_uuid(),
@@ -143,7 +143,7 @@ create table finance_entries (
 );
 
 -- ─────────────────────────────────────────────────────────
--- Gesundheit
+-- Health
 -- ─────────────────────────────────────────────────────────
 create table health_records (
   id uuid primary key default gen_random_uuid(),
@@ -155,36 +155,36 @@ create table health_records (
 );
 
 -- ─────────────────────────────────────────────────────────
--- Kontakte
+-- Contacts
 -- ─────────────────────────────────────────────────────────
 create table contacts (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  rolle text,                                 -- 'arzt', 'schule', 'verein', ...
+  rolle text,                                 -- e.g. 'doctor', 'school', 'club', ...
   telefon text,
   notiz text,
   created_at timestamptz not null default now()
 );
 
 -- ─────────────────────────────────────────────────────────
--- Assistent
+-- Assistant
 -- ─────────────────────────────────────────────────────────
 create table assistant_suggestions (
   id uuid primary key default gen_random_uuid(),
   typ text not null check (typ in ('konflikt', 'freizeit', 'frist')),
-  bezug_id uuid,                              -- verweist z.B. auf calendar_events.id
+  bezug_id uuid,                              -- references e.g. calendar_events.id
   text text not null,
   status text not null default 'offen' check (status in ('offen', 'erledigt', 'ignoriert')),
   created_at timestamptz not null default now()
 );
 
 -- ─────────────────────────────────────────────────────────
--- CalDAV-Sync
+-- CalDAV sync
 -- ─────────────────────────────────────────────────────────
 create table caldav_account (
   id uuid primary key default gen_random_uuid(),
   apple_id text not null,
-  app_passwort_verschluesselt text not null,  -- via Edge Function ver-/entschlüsselt, nie im Client
+  app_passwort_verschluesselt text not null,  -- encrypted/decrypted via Edge Function, never in the client
   kalender_sync_token text,
   aufgaben_sync_token text,
   einkauf_sync_token text,
@@ -204,10 +204,10 @@ create table sync_log (
 
 -- ─────────────────────────────────────────────────────────
 -- Row Level Security
--- Single-Tenant-Annahme: eine Deployment-Instanz = eine Familie.
--- Zugriff ist auf authentifizierte Nutzer (der eine technische
--- Familien-Account) beschränkt; die Personen-Ebene (PIN) wird in der
--- App-Logik geprüft, nicht in RLS.
+-- Single-tenant assumption: one deployment instance = one family.
+-- Access is restricted to authenticated users (the one technical
+-- family account); the per-person layer (PIN) is checked in the
+-- app logic, not in RLS.
 -- ─────────────────────────────────────────────────────────
 alter table members enable row level security;
 alter table calendar_events enable row level security;
@@ -226,10 +226,10 @@ alter table assistant_suggestions enable row level security;
 alter table caldav_account enable row level security;
 alter table sync_log enable row level security;
 
--- Generisches Policy-Muster: authentifizierte Nutzer dürfen alles.
--- caldav_account bekommt KEINE Client-Policy — nur die Edge Function
--- (service_role) darf darauf zugreifen, damit das App-Passwort nie
--- im Browser landet.
+-- Generic policy pattern: authenticated users may do everything.
+-- caldav_account gets NO client policy — only the Edge Function
+-- (service_role) may access it, so the app password never ends up
+-- in the browser.
 do $$
 declare t text;
 begin
@@ -246,4 +246,4 @@ begin
   end loop;
 end $$;
 
--- caldav_account: bewusst keine Policy für 'authenticated' -> nur service_role (Edge Functions) kommt ran
+-- caldav_account: deliberately no policy for 'authenticated' -> only service_role (Edge Functions) gets access

@@ -57,18 +57,16 @@ Sync:      Apple CalDAV (bidirectional)
 Open the SQL Editor and run the migration files **in numerical order**:
 
 ```
-supabase/migrations/001_basis_schema.sql
+supabase/migrations/001_base_schema.sql
 supabase/migrations/002_rls_policies.sql
-supabase/migrations/003_schema_updates_basis.sql
+supabase/migrations/003_schema_updates_base.sql
 ...
-supabase/migrations/028_sprache.sql
+supabase/migrations/026_language.sql
 ```
 
 > **Important:** keep the order! Each file builds on the previous ones.
-> Files 021 and 026 are intentionally missing from this repo (they belong to
-> a personal integration that isn't part of this public version) — skip
-> straight from 020 to 022, and from 025 to 027. Files 024–025 (cron jobs)
-> contain placeholders and are handled separately in step 8.
+> Files 023–024 (cron jobs) contain placeholders and are handled
+> separately in step 8.
 
 ### 3. Create the storage bucket and enable Realtime
 
@@ -148,7 +146,7 @@ Push notifications need a VAPID key pair. Generate one once (e.g. via
 
 ### 8. Set up cron jobs
 
-Files 024–025 in `supabase/migrations/` contain placeholders. Before
+Files 023–024 in `supabase/migrations/` contain placeholders. Before
 running them, replace:
 
 - `DEIN_ANON_KEY` → your anon public key
@@ -201,10 +199,10 @@ familycentralpwa/
 │   └── icon-512.png        # Splash screen / high-res
 └── supabase/
     ├── migrations/
-    │   ├── 001_basis_schema.sql
+    │   ├── 001_base_schema.sql
     │   ├── 002_rls_policies.sql
     │   ├── ...
-    │   └── 028_sprache.sql
+    │   └── 026_language.sql
     └── functions/
         ├── caldav-sync/index.ts
         ├── push-event/index.ts

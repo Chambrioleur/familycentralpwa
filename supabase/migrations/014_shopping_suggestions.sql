@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 create table if not exists shopping_suggestions (
   name text primary key,

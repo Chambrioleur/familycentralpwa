@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 create table if not exists push_subscriptions (
   id uuid primary key default gen_random_uuid(),
@@ -13,6 +13,6 @@ alter table push_subscriptions enable row level security;
 create policy "push_subscriptions_own" on push_subscriptions for all to authenticated
   using (member_id = my_member_id()) with check (member_id = my_member_id());
 
--- Verhindert, dass dieselbe fällige Aufgabe/Erinnerung mehrfach am selben Tag benachrichtigt
+-- Prevents the same due task/reminder from notifying more than once on the same day
 alter table tasks add column if not exists benachrichtigt_am date;
 alter table reminders add column if not exists benachrichtigt_am date;

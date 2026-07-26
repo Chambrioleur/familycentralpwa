@@ -1,11 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════
--- Konfigurierbares Rechtemanagement für Kinder-Rolle.
--- Erwachsene behalten immer vollen Zugriff (kein Sperr-Risiko für
--- sich selbst). Der Master stellt über die Einstellungen ein, was
--- Kinder pro Bereich sehen ("sichtbar") und bearbeiten ("bearbeiten")
--- dürfen. Bei Kalender/Aufgaben gilt zusätzlich: eigene Einträge
--- dürfen Kinder immer bearbeiten, unabhängig vom "bearbeiten"-Schalter
--- (der regelt dort nur, ob sie auch FREMDE Einträge bearbeiten dürfen).
+-- Configurable permission management for the child role.
+-- Adults always keep full access (no self-lockout risk). The master
+-- sets, via Settings, what children can see ("sichtbar"/visible) and
+-- edit ("bearbeiten"/edit) per area. For calendar/tasks, an extra rule
+-- applies: children can always edit their own entries, regardless of
+-- the "edit" toggle (which there only governs whether they may also
+-- edit OTHERS' entries).
 -- ═══════════════════════════════════════════════════════════════
 
 create table if not exists role_permissions (
@@ -33,9 +33,9 @@ insert into role_permissions (rolle, bereich, sichtbar, bearbeiten) values
   ('kind', 'voting', true, true)
 on conflict (rolle, bereich) do nothing;
 
--- Hilfsfunktionen: Erwachsene dürfen immer alles; für Kinder wird in
--- role_permissions nachgeschaut (Standard: sichtbar=true, bearbeiten=false,
--- falls kein Eintrag existiert)
+-- Helper functions: adults may always do everything; for children,
+-- role_permissions is looked up (default: sichtbar=true, bearbeiten=false,
+-- if no entry exists)
 create or replace function can_view(p_bereich text) returns boolean
 language sql stable security definer set search_path = public as $$
   select case
@@ -52,8 +52,8 @@ language sql stable security definer set search_path = public as $$
   end;
 $$;
 
--- ── Kalender: Kinder sehen (falls sichtbar), legen eigene Termine an,
---    bearbeiten/löschen eigene immer, fremde nur falls "bearbeiten" an ist
+-- ── Calendar: children can view (if visible), create their own events,
+--    always edit/delete their own, others' only if "bearbeiten"/edit is on
 drop policy if exists "events_select" on calendar_events;
 drop policy if exists "events_write" on calendar_events;
 drop policy if exists "events_update" on calendar_events;
@@ -69,7 +69,7 @@ create policy "events_update" on calendar_events for update to authenticated
 create policy "events_delete" on calendar_events for delete to authenticated
   using (can_edit('kalender') or member_id = my_member_id());
 
--- ── Aufgaben: analog Kalender
+-- ── Tasks: same pattern as calendar
 drop policy if exists "tasks_select" on tasks;
 drop policy if exists "tasks_insert" on tasks;
 drop policy if exists "tasks_update" on tasks;
@@ -84,7 +84,7 @@ create policy "tasks_update" on tasks for update to authenticated
 create policy "tasks_delete" on tasks for delete to authenticated
   using (can_edit('aufgaben') or member_id = my_member_id());
 
--- ── Erinnerungen
+-- ── Reminders
 drop policy if exists "reminders_select" on reminders;
 drop policy if exists "reminders_write" on reminders;
 drop policy if exists "reminders_update" on reminders;
@@ -95,7 +95,7 @@ create policy "reminders_write" on reminders for insert to authenticated with ch
 create policy "reminders_update" on reminders for update to authenticated using (can_edit('erinnerungen')) with check (can_edit('erinnerungen'));
 create policy "reminders_delete" on reminders for delete to authenticated using (can_edit('erinnerungen'));
 
--- ── Einkauf (Listen + Items)
+-- ── Shopping (lists + items)
 drop policy if exists "shopping_all" on shopping_items;
 create policy "shopping_select" on shopping_items for select to authenticated using (can_view('einkauf'));
 create policy "shopping_write" on shopping_items for insert to authenticated with check (can_edit('einkauf'));
@@ -108,14 +108,14 @@ create policy "shopping_lists_write" on shopping_lists for insert to authenticat
 create policy "shopping_lists_update" on shopping_lists for update to authenticated using (can_edit('einkauf')) with check (can_edit('einkauf'));
 create policy "shopping_lists_delete" on shopping_lists for delete to authenticated using (can_edit('einkauf'));
 
--- ── Dokumente
+-- ── Documents
 drop policy if exists "documents_all" on documents;
 create policy "documents_select" on documents for select to authenticated using (can_view('dokumente'));
 create policy "documents_write" on documents for insert to authenticated with check (can_edit('dokumente'));
 create policy "documents_update" on documents for update to authenticated using (can_edit('dokumente')) with check (can_edit('dokumente'));
 create policy "documents_delete" on documents for delete to authenticated using (can_edit('dokumente'));
 
--- ── Wissen
+-- ── Knowledge
 drop policy if exists "wiki_select" on wiki_entries;
 drop policy if exists "wiki_write" on wiki_entries;
 drop policy if exists "wiki_update" on wiki_entries;
@@ -125,7 +125,7 @@ create policy "wiki_write" on wiki_entries for insert to authenticated with chec
 create policy "wiki_update" on wiki_entries for update to authenticated using (can_edit('wissen')) with check (can_edit('wissen'));
 create policy "wiki_delete" on wiki_entries for delete to authenticated using (can_edit('wissen'));
 
--- ── Finanzen & Gesundheit (Standard: für Kinder unsichtbar)
+-- ── Finances & health (default: invisible to children)
 drop policy if exists "finance_all" on finance_entries;
 create policy "finance_select" on finance_entries for select to authenticated using (can_view('finanzen'));
 create policy "finance_write" on finance_entries for insert to authenticated with check (can_edit('finanzen'));
@@ -138,7 +138,7 @@ create policy "health_write" on health_records for insert to authenticated with 
 create policy "health_update" on health_records for update to authenticated using (can_edit('gesundheit')) with check (can_edit('gesundheit'));
 create policy "health_delete" on health_records for delete to authenticated using (can_edit('gesundheit'));
 
--- ── Kontakte
+-- ── Contacts
 drop policy if exists "contacts_select" on contacts;
 drop policy if exists "contacts_write" on contacts;
 drop policy if exists "contacts_update" on contacts;
@@ -155,4 +155,4 @@ drop policy if exists "votes_delete" on votes;
 create policy "votes_select" on votes for select to authenticated using (can_view('voting'));
 create policy "votes_insert" on votes for insert to authenticated with check (can_view('voting'));
 create policy "votes_delete" on votes for delete to authenticated using (can_edit('voting'));
--- vote_options/vote_responses bleiben wie bisher (alle dürfen mitstimmen, sofern Voting sichtbar ist)
+-- vote_options/vote_responses stay as before (everyone may vote, as long as voting is visible)

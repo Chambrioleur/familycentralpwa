@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 create table if not exists school_subjects (
   id uuid primary key default gen_random_uuid(),
@@ -11,7 +11,7 @@ create table if not exists timetable_entries (
   id uuid primary key default gen_random_uuid(),
   member_id uuid not null references members(id) on delete cascade,
   subject_id uuid not null references school_subjects(id) on delete cascade,
-  wochentag integer not null check (wochentag between 1 and 5), -- 1=Montag .. 5=Freitag
+  wochentag integer not null check (wochentag between 1 and 5), -- 1=Monday .. 5=Friday
   stunde integer not null check (stunde between 1 and 10),
   raum text
 );

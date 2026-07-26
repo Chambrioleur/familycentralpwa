@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 create table if not exists finance_categories (
   id uuid primary key default gen_random_uuid(),

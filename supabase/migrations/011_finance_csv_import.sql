@@ -1,4 +1,4 @@
--- Im SQL Editor ausführen
+-- Run in the SQL Editor
 
 alter table finance_entries add column if not exists zahlungsempfaenger text;
 
