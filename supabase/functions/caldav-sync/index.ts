@@ -1,23 +1,23 @@
 // supabase/functions/caldav-sync/index.ts
 //
-// Liest Termine aus dem gemeinsamen Apple-Kalender ("Familie").
+// Reads events from the shared Apple calendar ("Family").
 //
-// Verlauf der Fixes (der Reihe nach behoben):
-// 1. "tsdav"-Bibliothek verursachte "Bad file descriptor" in Deno -> entfernt,
-//    spricht CalDAV nur noch über Standard-fetch.
-// 2. XML-Auswertung ignorierte Tags ohne Namespace-Präfix -> behoben.
-// 3. Kalender-Suche verwechselte calendar-home-set mit dessen eigenem href
-//    -> jetzt gezielt innerhalb des richtigen Elements gesucht.
-// 4. Apple liefert teils absolute statt relative URLs -> resolveUrl() prüft das.
-// 5. Kalender-Erkennung war zu ungenau (fing Inbox/Notifications mit ein)
-//    -> jetzt über das korrekte resourcetype-Element + Ausschluss von
-//    Sonder-Kollektionen.
-// 6. "ical.js" kam mit Apples TZID=Europe/Berlin ohne mitgelieferte
-//    VTIMEZONE-Definition nicht klar -> komplett durch eigene, lokal
-//    getestete Auswertung ersetzt: eigene Regex-Extraktion der Felder +
-//    zuverlässige Zeitzonen-Umrechnung über die eingebaute Intl-API
-//    (keine externe Zeitzonen-Datenbank nötig) + "rrule"-Bibliothek für
-//    wiederkehrende Termine.
+// History of fixes (resolved in order):
+// 1. The "tsdav" library caused "Bad file descriptor" in Deno -> removed,
+//    now talks CalDAV purely via standard fetch.
+// 2. XML parsing ignored tags without a namespace prefix -> fixed.
+// 3. Calendar lookup confused calendar-home-set with its own href
+//    -> now searches specifically within the correct element.
+// 4. Apple sometimes returns absolute instead of relative URLs -> resolveUrl() checks for this.
+// 5. Calendar detection was too loose (also matched inbox/notifications)
+//    -> now uses the correct resourcetype element + excludes special
+//    collections.
+// 6. "ical.js" couldn't handle Apple's TZID=Europe/Berlin without a
+//    supplied VTIMEZONE definition -> replaced entirely with a custom,
+//    locally tested parser: custom regex field extraction + reliable
+//    timezone conversion via the built-in Intl API (no external
+//    timezone database needed) + the "rrule" library for recurring
+//    events.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import RRulePkg from "npm:rrule@2.8.1";
@@ -41,7 +41,7 @@ const corsHeaders = {
 
 const authHeader = "Basic " + btoa(`${APPLE_ID}:${APPLE_APP_PASSWORD}`);
 
-// ── WebDAV/XML-Helfer ─────────────────────────────────────────────
+// ── WebDAV/XML helpers ─────────────────────────────────────────────
 function resolveUrl(origin: string, href: string): string {
   return /^https?:\/\//i.test(href) ? href : origin + href;
 }
@@ -72,7 +72,7 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 }
 
-// ── ICS-Auswertung (eigen, lokal getestet — siehe Chat-Verlauf) ───
+// ── ICS parsing (custom, locally tested) ───
 function unfoldICS(ics: string): string {
   return ics.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
 }
@@ -91,8 +91,8 @@ function extractProp(block: string, name: string): { value: string; params: Reco
   return { value: m[2].trim(), params };
 }
 
-// Zuverlässige Zeitzonen-Umrechnung ohne externe Zeitzonen-Datenbank —
-// nutzt die in Deno eingebaute Intl-API (siehe lokaler Test im Chat).
+// Reliable timezone conversion without an external timezone database —
+// uses Deno's built-in Intl API.
 function zonedTimeToUtc(y: number, mo: number, d: number, h: number, mi: number, s: number, timeZone: string): Date {
   const asUTC = Date.UTC(y, mo - 1, d, h, mi, s);
   const dtf = new Intl.DateTimeFormat("en-US", {
@@ -122,7 +122,7 @@ function parseDateTimeProp(prop: { value: string; params: Record<string, string>
 function parseVEvent(block: string, rangeStart: Date, rangeEnd: Date) {
   const uid = extractProp(block, "UID")?.value;
   if (!uid) return [];
-  const summary = extractProp(block, "SUMMARY")?.value || "(ohne Titel)";
+  const summary = extractProp(block, "SUMMARY")?.value || "(untitled)";
   const dtstart = parseDateTimeProp(extractProp(block, "DTSTART"));
   const dtend = parseDateTimeProp(extractProp(block, "DTEND"));
   if (!dtstart) return [];
@@ -153,9 +153,9 @@ function parseVEvent(block: string, rangeStart: Date, rangeEnd: Date) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Entweder ein echter, angemeldeter Familien-Login ODER ein Cron-Aufruf
-  // mit geteiltem Geheimnis (für den automatischen Zeitplan) — nicht mehr
-  // der öffentliche anon-key allein.
+  // Either a real, logged-in family login OR a cron call with a shared
+  // secret (for the automatic schedule) — no longer just the public
+  // anon key.
   const cronSecret = req.headers.get("X-Cron-Secret");
   const expectedCronSecret = Deno.env.get("CRON_SECRET");
   const isCronCall = !!expectedCronSecret && cronSecret === expectedCronSecret;
@@ -165,11 +165,11 @@ Deno.serve(async (req) => {
     const callerToken = authHeaderIn.replace("Bearer ", "");
     const { data: callerData, error: callerErr } = await supabase.auth.getUser(callerToken);
     if (callerErr || !callerData?.user) {
-      return json({ ok: false, error: "Nicht angemeldet." }, 401);
+      return json({ ok: false, error: "Not signed in." }, 401);
     }
     const { data: callerMember } = await supabase.from("members").select("id").eq("user_id", callerData.user.id).maybeSingle();
     if (!callerMember) {
-      return json({ ok: false, error: "Kein Familienprofil gefunden." }, 403);
+      return json({ ok: false, error: "No family profile found." }, 403);
     }
   }
 
@@ -179,25 +179,25 @@ Deno.serve(async (req) => {
       `<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:"><D:prop><D:current-user-principal/></D:prop></D:propfind>`,
       "0"
     );
-    if (!step1.res.ok) throw new Error(`Anmeldung fehlgeschlagen (Schritt 1, Status ${step1.res.status}) — App-Passwort/Apple-ID prüfen`);
+    if (!step1.res.ok) throw new Error(`Sign-in failed (step 1, status ${step1.res.status}) — check the app password/Apple ID`);
     const principal = extractHrefWithin(step1.text, "current-user-principal");
-    if (!principal) throw new Error("Kein current-user-principal gefunden. Rohantwort: " + step1.text.slice(0, 400));
+    if (!principal) throw new Error("No current-user-principal found. Raw response: " + step1.text.slice(0, 400));
 
     const step2 = await davRequest(
       resolveUrl(step1.origin, principal), "PROPFIND",
       `<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:prop><C:calendar-home-set/></D:prop></D:propfind>`,
       "0"
     );
-    if (!step2.res.ok) throw new Error(`Kalender-Verzeichnis nicht gefunden (Schritt 2, Status ${step2.res.status})`);
+    if (!step2.res.ok) throw new Error(`Calendar directory not found (step 2, status ${step2.res.status})`);
     const calendarHome = extractHrefWithin(step2.text, "calendar-home-set");
-    if (!calendarHome) throw new Error("Kein calendar-home-set gefunden. Rohantwort: " + step2.text.slice(0, 400));
+    if (!calendarHome) throw new Error("No calendar-home-set found. Raw response: " + step2.text.slice(0, 400));
 
     const step3 = await davRequest(
       resolveUrl(step1.origin, calendarHome), "PROPFIND",
       `<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:"><D:prop><D:displayname/><D:resourcetype/></D:prop></D:propfind>`,
       "1"
     );
-    if (!step3.res.ok) throw new Error(`Kalenderliste nicht abrufbar (Schritt 3, Status ${step3.res.status}). Rohantwort: ${step3.text.slice(0, 400)}`);
+    if (!step3.res.ok) throw new Error(`Calendar list not retrievable (step 3, status ${step3.res.status}). Raw response: ${step3.text.slice(0, 400)}`);
     const candidates = splitResponses(step3.text)
       .map((r) => {
         const href = extractTag(r, "href");
@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
       })
       .filter((c) => c.href && c.isCollection && c.href !== calendarHome);
 
-    if (candidates.length === 0) throw new Error("Keine Kalender im Account gefunden. Rohantwort: " + step3.text.slice(0, 600));
+    if (candidates.length === 0) throw new Error("No calendars found in the account. Raw response: " + step3.text.slice(0, 600));
     const chosen = CALENDAR_NAME
       ? candidates.find((c) => (c.name ?? "").toLowerCase().includes(CALENDAR_NAME.toLowerCase())) ?? candidates[0]
       : candidates[0];
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
       `<?xml version="1.0" encoding="utf-8"?><C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:prop><D:getetag/><C:calendar-data/></D:prop><C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT"><C:time-range start="${isoUtc(rangeStart)}" end="${isoUtc(rangeEnd)}"/></C:comp-filter></C:comp-filter></C:filter></C:calendar-query>`,
       "1"
     );
-    if (!step4.res.ok) throw new Error(`Termine nicht abrufbar (Schritt 4, Status ${step4.res.status}). Rohantwort: ${step4.text.slice(0, 400)}`);
+    if (!step4.res.ok) throw new Error(`Events not retrievable (step 4, status ${step4.res.status}). Raw response: ${step4.text.slice(0, 400)}`);
 
     const objects = splitResponses(step4.text).map((r) => ({
       etag: extractTag(r, "getetag"),
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
           occurrences = parseVEvent(block, rangeStart, rangeEnd);
         } catch (err) {
           fehlerhaft++;
-          letzterFehler = `${String(err)} | Daten: ${block.slice(0, 400)}`;
+          letzterFehler = `${String(err)} | Data: ${block.slice(0, 400)}`;
           continue;
         }
         occurrencesGefunden += occurrences.length;
@@ -277,9 +277,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // In Apple gelöschte/verschobene Termine erkennen: alles, was wir aus
-    // Apple im gleichen Zeitraum in der DB haben, aber diesmal NICHT in der
-    // Antwort war, wurde dort entfernt -> auch hier als gelöscht markieren.
+    // Detect events deleted/moved in Apple: anything we have in the DB from
+    // Apple in the same time range, but that was NOT in this response, was
+    // removed there -> mark it as deleted here too.
     const { data: bekannte } = await supabase
       .from("calendar_events")
       .select("id, caldav_uid")
@@ -298,13 +298,13 @@ Deno.serve(async (req) => {
 
     await supabase.from("sync_log").insert({
       tabelle: "calendar_events", richtung: "pull", ergebnis: "erfolg",
-      details: `Kalender "${chosen.name}": ${neu} neu, ${aktualisiert} aktualisiert, ${geloescht} gelöscht, ${fehlerhaft} fehlerhaft`,
+      details: `Calendar "${chosen.name}": ${neu} new, ${aktualisiert} updated, ${geloescht} deleted, ${fehlerhaft} failed`,
     });
 
     return json({
       ok: true, neu, aktualisiert, geloescht, fehlerhaft, kalender: chosen.name, alle_kalender: candidates.map((c) => c.name),
       letzter_fehler: letzterFehler,
-      diagnose: `${objects.length} Rohobjekte, ${veventsGefunden} Termine im Kalender-Datensatz, ${occurrencesGefunden} Vorkommen im Zeitraum berechnet.`,
+      diagnose: `${objects.length} raw objects, ${veventsGefunden} events in the calendar data, ${occurrencesGefunden} occurrences computed in range.`,
       letzter_insert_fehler: letzterInsertFehler,
     });
   } catch (err) {

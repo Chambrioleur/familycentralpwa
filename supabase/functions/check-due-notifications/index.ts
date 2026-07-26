@@ -1,8 +1,8 @@
 // supabase/functions/check-due-notifications/index.ts
 //
-// Läuft zeitgesteuert (Supabase Cron Job, z. B. stündlich) und schickt
-// Push-Benachrichtigungen für heute fällige Aufgaben & Erinnerungen.
-// Jeder Eintrag wird pro Tag nur einmal benachrichtigt (benachrichtigt_am).
+// Runs on a schedule (Supabase cron job, e.g. hourly) and sends push
+// notifications for tasks & reminders due today.
+// Each entry is only notified once per day (benachrichtigt_am).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
@@ -13,7 +13,7 @@ const supabaseAdmin = createClient(
 );
 
 webpush.setVapidDetails(
-  Deno.env.get("VAPID_SUBJECT") ?? "mailto:familie@example.com",
+  Deno.env.get("VAPID_SUBJECT") ?? "mailto:family@example.com",
   Deno.env.get("VAPID_PUBLIC_KEY")!,
   Deno.env.get("VAPID_PRIVATE_KEY")!
 );
@@ -51,13 +51,13 @@ async function notifyMembers(memberIds: string[], payload: Record<string, unknow
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Läuft automatisch per Cron-Job (kein eingeloggter Nutzer) — daher ein
-  // geteiltes Geheimnis statt einer Nutzer-Anmeldung. Muss beim Einrichten
-  // des Cron-Jobs als Header "X-Cron-Secret" mitgegeben werden.
+  // Runs automatically via a cron job (no logged-in user) — hence a
+  // shared secret instead of a user login. Must be passed as the
+  // "X-Cron-Secret" header when setting up the cron job.
   const providedSecret = req.headers.get("X-Cron-Secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
   if (!expectedSecret || providedSecret !== expectedSecret) {
-    return new Response(JSON.stringify({ ok: false, error: "Nicht autorisiert." }), {
+    return new Response(JSON.stringify({ ok: false, error: "Not authorized." }), {
       status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
 
     for (const t of tasks ?? []) {
       const targets = t.member_id ? [t.member_id] : allMemberIds;
-      const n = await notifyMembers(targets, { title: "Aufgabe fällig", body: t.titel, url: "/#aufgaben" });
+      const n = await notifyMembers(targets, { title: "Task due", body: t.titel, url: "/#aufgaben" });
       if (n > 0) benachrichtigt++;
       await supabaseAdmin.from("tasks").update({ benachrichtigt_am: today }).eq("id", t.id);
     }
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
       .or(`benachrichtigt_am.is.null,benachrichtigt_am.lt.${today}`);
 
     for (const r of reminders ?? []) {
-      const n = await notifyMembers(allMemberIds, { title: "Erinnerung", body: r.titel, url: "/#erinnerungen" });
+      const n = await notifyMembers(allMemberIds, { title: "Reminder", body: r.titel, url: "/#erinnerungen" });
       if (n > 0) benachrichtigt++;
       await supabaseAdmin.from("reminders").update({ benachrichtigt_am: today }).eq("id", r.id);
     }

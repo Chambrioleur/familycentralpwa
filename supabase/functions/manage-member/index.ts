@@ -1,14 +1,14 @@
 // supabase/functions/manage-member/index.ts
 //
-// Legt eine neue Person inkl. echtem Login-Zugang an. Läuft serverseitig
-// mit dem service_role-Schlüssel (den bekommt jede Edge Function
-// automatisch von Supabase gestellt — kein manuelles Secret nötig).
+// Creates a new person including a real login. Runs server-side with
+// the service_role key (every Edge Function gets this automatically
+// from Supabase — no manual secret needed).
 //
-// Regeln:
-// - Wenn noch NIEMAND existiert (allererste Einrichtung): jeder darf
-//   diese eine erste Person anlegen, sie wird automatisch Master.
-// - Danach: nur wer bereits als Master eingeloggt ist, darf weitere
-//   Personen anlegen.
+// Rules:
+// - If NOBODY exists yet (very first setup): anyone may create this one
+//   first person, who automatically becomes master.
+// - After that: only someone already logged in as master may create
+//   further people.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -17,8 +17,8 @@ const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-// Ohne diese Header blockiert der Browser den Aufruf von der Web-App aus
-// lautlos (CORS) — kein Fehler sichtbar, einfach keine Reaktion.
+// Without these headers the browser silently blocks the call from the
+// web app (CORS) — no visible error, it just does nothing.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type",
@@ -40,10 +40,10 @@ Deno.serve(async (req) => {
     const { name, rolle, farbe, geburtstag, login_email, password } = await req.json();
 
     if (!name || !rolle || !farbe || !login_email || !password) {
-      return json({ error: "Bitte alle Pflichtfelder ausfüllen." }, 400);
+      return json({ error: "Please fill in all required fields." }, 400);
     }
     if (password.length < 6) {
-      return json({ error: "Passwort/PIN muss mindestens 6 Zeichen haben." }, 400);
+      return json({ error: "Password/PIN must be at least 6 characters." }, 400);
     }
 
     const { count } = await supabaseAdmin
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       const token = authHeader.replace("Bearer ", "");
       const { data: callerData, error: callerErr } = await supabaseAdmin.auth.getUser(token);
       if (callerErr || !callerData?.user) {
-        return json({ error: "Nicht angemeldet." }, 401);
+        return json({ error: "Not signed in." }, 401);
       }
       const { data: callerMember } = await supabaseAdmin
         .from("members")
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         .eq("user_id", callerData.user.id)
         .maybeSingle();
       if (!callerMember?.ist_master) {
-        return json({ error: "Nur der Master darf neue Personen anlegen." }, 403);
+        return json({ error: "Only the master may create new people." }, 403);
       }
     }
 
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       ist_master: isBootstrap,
     }).select().single();
     if (insertErr) {
-      // Aufräumen, falls das Anlegen des DB-Eintrags scheitert
+      // Clean up if creating the DB entry fails
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return json({ error: insertErr.message }, 400);
     }

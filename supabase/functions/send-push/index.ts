@@ -1,7 +1,7 @@
 // supabase/functions/send-push/index.ts
 //
-// Sendet eine Push-Benachrichtigung an alle Geräte einer Person.
-// Ohne Angabe von member_id wird an die eigenen Geräte gesendet (Test-Button).
+// Sends a push notification to all of a person's devices.
+// Without a member_id, it sends to the caller's own devices (test button).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
@@ -12,7 +12,7 @@ const supabaseAdmin = createClient(
 );
 
 webpush.setVapidDetails(
-  Deno.env.get("VAPID_SUBJECT") ?? "mailto:familie@example.com",
+  Deno.env.get("VAPID_SUBJECT") ?? "mailto:family@example.com",
   Deno.env.get("VAPID_PUBLIC_KEY")!,
   Deno.env.get("VAPID_PRIVATE_KEY")!
 );
@@ -37,7 +37,7 @@ async function sendToMember(memberId: string, payload: Record<string, unknown>) 
       );
       sent++;
     } catch (err) {
-      // Ungültige/abgelaufene Abos (410/404) aufräumen
+      // Clean up invalid/expired subscriptions (410/404)
       if (String(err).includes("410") || String(err).includes("404")) {
         await supabaseAdmin.from("push_subscriptions").delete().eq("id", sub.id);
         removed++;
@@ -53,15 +53,15 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
     const { data: callerData, error: callerErr } = await supabaseAdmin.auth.getUser(token);
-    if (callerErr || !callerData?.user) return json({ error: "Nicht angemeldet." }, 401);
+    if (callerErr || !callerData?.user) return json({ error: "Not signed in." }, 401);
 
     const { data: caller } = await supabaseAdmin.from("members").select("id").eq("user_id", callerData.user.id).maybeSingle();
-    if (!caller) return json({ error: "Kein Profil gefunden." }, 404);
+    if (!caller) return json({ error: "No profile found." }, 404);
 
     const body = await req.json().catch(() => ({}));
     const memberId = body.member_id || caller.id;
     const title = body.title || "Familienzentrale";
-    const message = body.body || "Testbenachrichtigung — sieht gut aus! 🎉";
+    const message = body.body || "Test notification — looks good! 🎉";
 
     const result = await sendToMember(memberId, { title, body: message, url: "/" });
     return json({ ok: true, ...result });

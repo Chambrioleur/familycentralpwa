@@ -1,10 +1,11 @@
 // supabase/functions/push-event/index.ts
 //
-// Schritt 5 im Plan: schreibt Termine aus der App zurück in den Apple-
-// Kalender (Rückrichtung zu caldav-sync, das nur liest). Bewusst nur für
-// Termine mit quelle='app' — aus wiederkehrenden Apple-Terminen einzeln
-// erzeugte Vorkommen (siehe caldav-sync) werden NICHT zurückgeschrieben,
-// sonst entstünden in Apple viele Einzeltermine statt der einen Serie.
+// Writes events from the app back into the Apple calendar (the reverse
+// direction of caldav-sync, which only reads). Deliberately only for
+// events with quelle='app' — individual occurrences generated from
+// recurring Apple events (see caldav-sync) are NOT written back,
+// otherwise Apple would end up with many individual events instead of
+// the one series.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -81,25 +82,25 @@ async function findCalendarHref(): Promise<{ origin: string; href: string }> {
     `<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:"><D:prop><D:current-user-principal/></D:prop></D:propfind>`,
     "0"
   );
-  if (!step1.res.ok) throw new Error(`Anmeldung fehlgeschlagen (Status ${step1.res.status})`);
+  if (!step1.res.ok) throw new Error(`Sign-in failed (status ${step1.res.status})`);
   const principal = extractHrefWithin(step1.text, "current-user-principal");
-  if (!principal) throw new Error("Kein current-user-principal gefunden.");
+  if (!principal) throw new Error("No current-user-principal found.");
 
   const step2 = await davRequest(
     resolveUrl(step1.origin, principal), "PROPFIND",
     `<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:prop><C:calendar-home-set/></D:prop></D:propfind>`,
     "0"
   );
-  if (!step2.res.ok) throw new Error(`Kalender-Verzeichnis nicht gefunden (Status ${step2.res.status})`);
+  if (!step2.res.ok) throw new Error(`Calendar directory not found (status ${step2.res.status})`);
   const calendarHome = extractHrefWithin(step2.text, "calendar-home-set");
-  if (!calendarHome) throw new Error("Kein calendar-home-set gefunden.");
+  if (!calendarHome) throw new Error("No calendar-home-set found.");
 
   const step3 = await davRequest(
     resolveUrl(step1.origin, calendarHome), "PROPFIND",
     `<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:"><D:prop><D:displayname/><D:resourcetype/></D:prop></D:propfind>`,
     "1"
   );
-  if (!step3.res.ok) throw new Error(`Kalenderliste nicht abrufbar (Status ${step3.res.status})`);
+  if (!step3.res.ok) throw new Error(`Calendar list not retrievable (status ${step3.res.status})`);
   const candidates = splitResponses(step3.text)
     .map((r) => {
       const href = extractTag(r, "href");
@@ -109,7 +110,7 @@ async function findCalendarHref(): Promise<{ origin: string; href: string }> {
       return { href, name: extractTag(r, "displayname"), isCollection: isRealCalendar && !looksSpecial };
     })
     .filter((c) => c.href && c.isCollection && c.href !== calendarHome);
-  if (candidates.length === 0) throw new Error("Keine Kalender im Account gefunden.");
+  if (candidates.length === 0) throw new Error("No calendars found in the account.");
   const chosen = CALENDAR_NAME
     ? candidates.find((c) => (c.name ?? "").toLowerCase().includes(CALENDAR_NAME.toLowerCase())) ?? candidates[0]
     : candidates[0];
@@ -122,33 +123,34 @@ Deno.serve(async (req) => {
   const authHeaderIn = req.headers.get("Authorization") || "";
   const callerToken = authHeaderIn.replace("Bearer ", "");
   const { data: callerData, error: callerErr } = await supabase.auth.getUser(callerToken);
-  if (callerErr || !callerData?.user) return json({ ok: false, error: "Nicht angemeldet." }, 401);
+  if (callerErr || !callerData?.user) return json({ ok: false, error: "Not signed in." }, 401);
   const { data: callerMember } = await supabase.from("members").select("id").eq("user_id", callerData.user.id).maybeSingle();
-  if (!callerMember) return json({ ok: false, error: "Kein Familienprofil gefunden." }, 403);
+  if (!callerMember) return json({ ok: false, error: "No family profile found." }, 403);
 
   try {
     const { event_id, action } = await req.json();
-    if (!event_id) return json({ ok: false, error: "event_id fehlt." }, 400);
+    if (!event_id) return json({ ok: false, error: "event_id is missing." }, 400);
 
     const { data: event, error: fetchErr } = await supabase.from("calendar_events").select("*").eq("id", event_id).maybeSingle();
-    if (fetchErr || !event) return json({ ok: false, error: "Termin nicht gefunden." }, 404);
+    if (fetchErr || !event) return json({ ok: false, error: "Event not found." }, 404);
 
-    // Löschen soll immer zurückgeschrieben werden, egal woher der Termin
-    // ursprünglich kam (App oder Apple) — nur bei Neuanlegen/Ändern
-    // beschränken wir uns bewusst auf App-Termine (siehe unten).
+    // Deletion should always be written back, regardless of where the
+    // event originally came from (app or Apple) — only for creating/
+    // updating do we deliberately restrict ourselves to app events (see
+    // below).
     if (action === "delete") {
-      if (!event.caldav_uid) return json({ ok: true, skipped: "Kein caldav_uid vorhanden, nichts zum Löschen in Apple." });
+      if (!event.caldav_uid) return json({ ok: true, skipped: "No caldav_uid present, nothing to delete in Apple." });
       const { href: calendarHref } = await findCalendarHref();
       const objUrl = `${calendarHref}${event.caldav_uid}.ics`;
       const delRes = await fetch(objUrl, { method: "DELETE", headers: { Authorization: authHeader } });
       if (!delRes.ok && delRes.status !== 404) {
         const body = await delRes.text().catch(() => "");
-        return json({ ok: false, error: `Löschen in Apple fehlgeschlagen (Status ${delRes.status}): ${body.slice(0, 200)}` }, 502);
+        return json({ ok: false, error: `Deleting in Apple failed (status ${delRes.status}): ${body.slice(0, 200)}` }, 502);
       }
       return json({ ok: true, deleted: true });
     }
 
-    if (event.quelle !== "app") return json({ ok: true, skipped: "Kein App-Termin, nicht zurückgeschrieben." });
+    if (event.quelle !== "app") return json({ ok: true, skipped: "Not an app event, not written back." });
 
     const { href: calendarHref } = await findCalendarHref();
 
@@ -160,7 +162,7 @@ Deno.serve(async (req) => {
       headers: { Authorization: authHeader, "Content-Type": "text/calendar; charset=utf-8" },
       body: ics,
     });
-    if (!putRes.ok) return json({ ok: false, error: `Apple hat den Termin abgelehnt (Status ${putRes.status}).` }, 500);
+    if (!putRes.ok) return json({ ok: false, error: `Apple rejected the event (status ${putRes.status}).` }, 500);
     const etag = putRes.headers.get("ETag") || null;
     await supabase.from("calendar_events").update({ caldav_uid: uid, caldav_etag: etag }).eq("id", event_id);
 
