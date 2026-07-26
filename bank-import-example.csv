@@ -1,0 +1,11 @@
+"Konto";"DE00 0000 0000 0000 0000 00"
+"Von";"01.01.2026"
+"Bis";"31.01.2026"
+"Kontostand vom 31.01.2026:";"1.234,56 €"
+
+"Buchungsdatum";"Wertstellung";"Status";"Zahlungspflichtige*r";"Zahlungsempfänger*in";"Verwendungszweck";"Umsatztyp";"IBAN";"Betrag (€)";"Gläubiger-ID";"Mandatsreferenz";"Kundenreferenz"
+"28.01.2026";"28.01.2026";"Gebucht";"Max Mustermann";"Supermarkt Muster GmbH";"Kartenzahlung";"Ausgang";"DE00000000000000000000";"-42,17";"";"";""
+"27.01.2026";"27.01.2026";"Gebucht";"Max Mustermann";"Muster Energie AG";"Abschlag Strom Januar";"Ausgang";"DE00000000000000000000";"-89,00";"";"";""
+"25.01.2026";"25.01.2026";"Gebucht";"Beispiel Arbeitgeber GmbH";"Max Mustermann";"Gehalt Januar 2026";"Eingang";"DE00000000000000000000";"2.850,00";"";"";""
+"20.01.2026";"20.01.2026";"Gebucht";"Max Mustermann";"Muster Hausverwaltung";"Miete Januar";"Ausgang";"DE00000000000000000000";"-950,00";"";"";""
+"15.01.2026";"15.01.2026";"Gebucht";"Max Mustermann";"Beispiel Streaming Inc.";"Abo";"Ausgang";"DE00000000000000000000";"-12,99";"";"";""

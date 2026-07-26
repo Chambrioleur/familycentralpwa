@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Build artifacts / logs
+node_modules/
+.env
+*.log
+
+# Local editor settings
+.vscode/
+.idea/
+
+# Your real credentials — never commit these.
+# Template with placeholders: frontend/config.example.js
+frontend/config.js
+
+# Supabase introspection exports, if you ever generate any locally.
+supabase/*-export.csv
