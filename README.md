@@ -5,7 +5,6 @@ school, documents, recipes, meal plan, and more.
 Designed as a "tablet in the kitchen" hub, but works just as well on
 iPhone, iPad, and desktop.
 
-<a href="https://buymeacoffee.com/chambrioleur" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 <a href="https://www.paypal.com/paypalme/cpoutdooradventure" target="_blank"><img src="https://img.shields.io/badge/PayPal-Donate-blue.svg?logo=paypal" alt="Donate via PayPal" height="28"></a>
 
 ## Features
