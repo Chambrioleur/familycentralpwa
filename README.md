@@ -80,7 +80,9 @@ easy to miss:
    creating the bucket itself, profile picture uploads fail with a
    "bucket not found" error.
 2. **Database → Replication** → enable Realtime for at least these tables:
-   `calendar_events`, `tasks`, `shopping_items`, `reminders`, `members`.
+   `calendar_events`, `tasks`, `shopping_items`, `reminders`, `members`,
+   `household_tasks`, `household_task_assignees`, `household_task_completions`,
+   `household_task_suggestions`.
    Without this, the app works fine but cross-device live updates don't —
    changes only show up after a manual reload.
 
