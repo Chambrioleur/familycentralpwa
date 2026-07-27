@@ -62,6 +62,8 @@ supabase/migrations/002_rls_policies.sql
 supabase/migrations/003_schema_updates_base.sql
 ...
 supabase/migrations/026_language.sql
+supabase/migrations/027_household_plan.sql
+supabase/migrations/028_household_task_suggestions.sql
 ```
 
 > **Important:** keep the order! Each file builds on the previous ones.
@@ -202,7 +204,7 @@ familycentralpwa/
     │   ├── 001_base_schema.sql
     │   ├── 002_rls_policies.sql
     │   ├── ...
-    │   └── 026_language.sql
+    │   └── 028_household_task_suggestions.sql
     └── functions/
         ├── caldav-sync/index.ts
         ├── push-event/index.ts

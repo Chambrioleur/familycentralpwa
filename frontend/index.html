@@ -68,9 +68,17 @@
   // alten Versionen fest, selbst nach "Website-Daten löschen". Deshalb hier
   // aktiv nach Updates suchen, statt nur passiv auf HTTP-Caching zu vertrauen.
   (function () {
+    // Statt beim Erkennen einer neuen Version sofort neu zu laden (Risiko:
+    // Reload mitten in einer Eingabe reisst unfertige Formulare weg), wird
+    // nur ein Flag gesetzt + Event gefeuert. Die React-App zeigt daraufhin
+    // einen Banner mit "Jetzt aktualisieren"-Button — der Nutzer entscheidet.
+    function notifyUpdateAvailable() {
+      window.__fzUpdateAvailable = true;
+      window.dispatchEvent(new CustomEvent("fz-update-available"));
+    }
+
     // 1) Falls bereits ein Service Worker registriert ist (z. B. durch
-    //    aktivierte Push-Benachrichtigungen): auf neue Version prüfen und
-    //    bei Aktivierung automatisch neu laden.
+    //    aktivierte Push-Benachrichtigungen): auf neue Version prüfen.
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (regs) {
         regs.forEach(function (reg) {
@@ -80,7 +88,7 @@
             if (!nw) return;
             nw.addEventListener("statechange", function () {
               if (nw.state === "installed" && navigator.serviceWorker.controller) {
-                window.location.reload();
+                notifyUpdateAvailable();
               }
             });
           });
@@ -90,7 +98,7 @@
 
     // 2) Eigene Versionsprüfung unabhängig vom Service Worker: holt die
     //    aktuelle index.html unter Umgehung jeglichen Caches und vergleicht
-    //    die Build-Kennung. Weicht sie ab, wird neu geladen.
+    //    die Build-Kennung.
     var metaTag = document.querySelector('meta[name="app-build"]');
     var currentBuild = metaTag ? metaTag.content : null;
     function checkForNewVersion() {
@@ -99,7 +107,7 @@
         .then(function (res) { return res.text(); })
         .then(function (html) {
           var m = html.match(/name="app-build" content="([^"]+)"/);
-          if (m && m[1] !== currentBuild) window.location.reload();
+          if (m && m[1] !== currentBuild) notifyUpdateAvailable();
         })
         .catch(function () {});
     }
@@ -133,6 +141,7 @@ import {
   Wallet, HeartPulse, Contact, Vote, Sparkles, Settings, Menu, X, Sun, Moon, Lock,
   ChevronRight, ChevronLeft, Plus, Check, Clock, Cake, TrendingUp, TrendingDown,
   Phone, Mail, ThumbsUp, Search, ChefHat, Camera, Paperclip, AlertTriangle, Utensils, GraduationCap, ChevronDown,
+  SprayCan,
 } from "lucide-react";
 
 // ── Supabase-Verbindung ──────────────────────────────────────────
@@ -181,6 +190,8 @@ function locale() {
 
 const TRANSLATIONS = {
   "en": {
+    "Eine neue Version ist verfügbar.": "A new version is available.",
+    "Jetzt aktualisieren": "Update now",
     "\"Nur eigene\" bedeutet: darf nur eigene Einträge bearbeiten/löschen, nicht die anderer Personen. Ohne Übersteuerung gilt für Kinder ein sinnvoller Standard.":
       "\"Own entries only\" means: may only edit/delete their own entries, not other people's. Without an override, a sensible default applies to children.",
     "(Std.)": "(default)",
@@ -388,6 +399,46 @@ const TRANSLATIONS = {
     "Hackfleisch": "Minced meat",
     "Hauptgericht": "Main course",
     "Haushaltsbudget im Überblick.": "Household budget at a glance.",
+    "Haushaltsplan": "Household plan",
+    "Haushaltsplan heute": "Household plan today",
+    "Heute nichts zu tun.": "Nothing to do today.",
+    "Heute {done}/{total}": "Today {done}/{total}",
+    "Rotation zwischen:": "Rotates between:",
+    "Titel (z.B. Bad putzen)": "Title (e.g. Clean bathroom)",
+    "Wechselt automatisch jede Woche in dieser Reihenfolge.": "Switches automatically every week in this order.",
+    "Wer macht was im Haushalt – und wann.": "Who does what around the house – and when.",
+    "Wochentag": "Weekday",
+    "Zugewiesen an:": "Assigned to:",
+    "Zum Haushaltsplan": "To household plan",
+    "heute erledigt": "done today",
+    "{done}/{total}": "{done}/{total}",
+    "{n} Tage in Folge": "{n} days in a row",
+    "Vorschlag wählen…": "Choose a suggestion…",
+    "Eigene": "Custom",
+    "Auch als Vorschlag merken": "Also save as a suggestion",
+    "Saisonal / Selten": "Seasonal / Rare",
+    "Küche aufräumen": "Tidy up the kitchen",
+    "Spülmaschine ein-/ausräumen": "Load/unload the dishwasher",
+    "Mülleimer leeren": "Empty the bin",
+    "Betten machen": "Make the beds",
+    "Staubsaugen": "Vacuum",
+    "Böden wischen": "Mop the floors",
+    "Bad putzen": "Clean the bathroom",
+    "Wäsche waschen": "Do the laundry",
+    "Handtücher wechseln": "Change towels",
+    "Bettwäsche wechseln": "Change bedsheets",
+    "Mülltonnen rausstellen": "Put out the bins",
+    "Fenster putzen (innen)": "Clean windows (inside)",
+    "Kühlschrank ausräumen und putzen": "Empty and clean the fridge",
+    "Backofen reinigen": "Clean the oven",
+    "Böden grundreinigen": "Deep-clean the floors",
+    "Schublade im Bad aufräumen": "Tidy the bathroom drawer",
+    "Kleiderschrank aussortieren": "Sort out the wardrobe",
+    "Dachboden/Keller aufräumen": "Tidy the attic/basement",
+    "Fenster putzen (außen)": "Clean windows (outside)",
+    "Rauchmelder-Batterien prüfen": "Check smoke detector batteries",
+    "Dunstabzugshaube reinigen": "Clean the range hood",
+    "Waschmaschinen-Filter reinigen": "Clean the washing machine filter",
     "Hell": "Light",
     "Heute": "Today",
     "Heute keine Termine.": "No events today.",
@@ -679,6 +730,7 @@ function navSections() {
     { id: "aufgaben", label: t("Aufgaben"), icon: ListChecks },
     { id: "einkauf", label: t("Einkauf"), icon: ShoppingCart },
     { id: "erinnerungen", label: t("Erinnerungen"), icon: BellRing },
+    { id: "haushaltsplan", label: t("Haushaltsplan"), icon: SprayCan },
   ]},
   { title: t("Familie"), items: [
     { id: "dokumente", label: t("Dokumente"), icon: FileText },
@@ -991,6 +1043,11 @@ function startOfWeek(d) {
   return date;
 }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+// Stabiler, monoton steigender Wochen-Index (Montag-basiert), fuer
+// Rotation und Streak-Berechnung im Haushaltsplan — kein ISO-8601-
+// Wochennummer-Sonderfall (Jahreswechsel etc.), einfach Tage seit Epoch
+// durch 7 geteilt, ausgehend vom Wochenanfang.
+function weekIndex(d) { return Math.floor(startOfWeek(d).getTime() / (7 * 86400000)); }
 function isoDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -2486,6 +2543,242 @@ function SchoolModule({ theme, kids, subjects, timetableEntries, grades, exams, 
   );
 }
 
+// ── Haushaltsplan-Helfer ────────────────────────────────────────────
+// Zuweisungen einer Aufgabe, sortiert nach Rotations-Reihenfolge.
+function householdAssigneesFor(taskId, allAssignees) {
+  return allAssignees.filter((a) => a.task_id === taskId).sort((a, b) => a.rotation_order - b.rotation_order);
+}
+// "Wer ist diese Woche dran" — bei nur einer zugewiesenen Person immer
+// dieselbe, bei mehreren rotiert es wochenweise durch (deterministisch,
+// haengt nur vom Wochen-Index von "forDate" ab, nicht vom Aufrufzeitpunkt).
+function householdCurrentAssignee(taskId, allAssignees, forDate) {
+  const list = householdAssigneesFor(taskId, allAssignees);
+  if (list.length === 0) return null;
+  return list[weekIndex(forDate) % list.length].member_id;
+}
+function householdIsDueOn(task, date) {
+  if (task.rhythmus === "taeglich") return true;
+  const weekday = ((date.getDay() + 6) % 7) + 1; // 1=Mo..7=So
+  return task.wochentag === weekday;
+}
+// Aufeinanderfolgende Tage rueckwaerts ab "fromDate", an denen die Person
+// ALLE ihr an dem Tag zugewiesenen Aufgaben erledigt hat. Tage ohne
+// zugewiesene Aufgaben zaehlen weder positiv noch brechen sie die Serie ab.
+function householdStreak(memberId, tasks, allAssignees, completions, fromDate) {
+  let streak = 0;
+  let cursor = new Date(fromDate);
+  cursor.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 365; i++) {
+    const dISO = isoDate(cursor);
+    const due = tasks.filter((task) => householdIsDueOn(task, cursor) && householdCurrentAssignee(task.id, allAssignees, cursor) === memberId);
+    if (due.length === 0) { cursor = addDays(cursor, -1); continue; }
+    const allDone = due.every((task) => completions.some((c) => c.task_id === task.id && c.datum === dISO && c.member_id === memberId));
+    if (!allDone) break;
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+// Kuratierte Vorschlagsliste ("wie Aligned"): rohe deutsche Strings als
+// Dict-Schlüssel, erst beim Rendern/Auswählen mit t() übersetzt, damit ein
+// Sprachwechsel die Liste live aktualisiert (kein Modul-weiter t()-Aufruf).
+const HAUSHALT_VORSCHLAEGE = [
+  { kategorie: "Täglich", rhythmus: "taeglich", items: ["Küche aufräumen", "Spülmaschine ein-/ausräumen", "Mülleimer leeren", "Betten machen"] },
+  { kategorie: "Wöchentlich", rhythmus: "woechentlich", items: ["Staubsaugen", "Böden wischen", "Bad putzen", "Wäsche waschen", "Handtücher wechseln", "Bettwäsche wechseln", "Mülltonnen rausstellen"] },
+  { kategorie: "Monatlich", rhythmus: "woechentlich", items: ["Fenster putzen (innen)", "Kühlschrank ausräumen und putzen", "Backofen reinigen", "Böden grundreinigen"] },
+  { kategorie: "Saisonal / Selten", rhythmus: "woechentlich", items: ["Schublade im Bad aufräumen", "Kleiderschrank aussortieren", "Dachboden/Keller aufräumen", "Fenster putzen (außen)", "Rauchmelder-Batterien prüfen", "Dunstabzugshaube reinigen", "Waschmaschinen-Filter reinigen"] },
+];
+
+function HouseholdTaskForm({ theme, members, suggestions, canManageSuggestions, onCreate, onCancel, onSaveSuggestion, onDeleteSuggestion }) {
+  const [titel, setTitel] = useState("");
+  const [rhythmus, setRhythmus] = useState("woechentlich");
+  const [wochentag, setWochentag] = useState(1);
+  const [assigneeIds, setAssigneeIds] = useState([]);
+  const [merken, setMerken] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const toggleAssignee = (id) => setAssigneeIds((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+
+  const applyVorschlag = (rawTitel, vorschlagRhythmus) => {
+    if (!rawTitel) return;
+    setTitel(t(rawTitel));
+    setRhythmus(vorschlagRhythmus);
+    if (vorschlagRhythmus === "woechentlich") setWochentag(1);
+  };
+
+  const submit = async () => {
+    if (!titel.trim() || assigneeIds.length === 0) return;
+    setSaving(true);
+    await onCreate({
+      titel: titel.trim(), rhythmus, wochentag: rhythmus === "woechentlich" ? Number(wochentag) : null,
+      assigneeIds,
+    });
+    if (merken) await onSaveSuggestion({ titel: titel.trim(), rhythmus });
+    setSaving(false);
+  };
+
+  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 340 } },
+    h("select", {
+      value: "", onChange: (e) => {
+        const [kat, item] = e.target.value.split("::");
+        if (kat === "__eigene") { applyVorschlag(item, suggestions.find((s) => s.titel === item)?.rhythmus || "woechentlich"); return; }
+        const gruppe = HAUSHALT_VORSCHLAEGE.find((g) => g.kategorie === kat);
+        if (gruppe && item) applyVorschlag(item, gruppe.rhythmus);
+      },
+      style: { backgroundColor: theme.surface, color: theme.textMuted, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 13 },
+    },
+      h("option", { value: "" }, t("Vorschlag wählen…")),
+      suggestions.length > 0 && h("optgroup", { key: "__eigene", label: t("Eigene") },
+        suggestions.map((s) => h("option", { key: s.id, value: `__eigene::${s.titel}` }, s.titel))
+      ),
+      HAUSHALT_VORSCHLAEGE.map((gruppe) => h("optgroup", { key: gruppe.kategorie, label: t(gruppe.kategorie) },
+        gruppe.items.map((item) => h("option", { key: item, value: `${gruppe.kategorie}::${item}` }, t(item)))
+      ))
+    ),
+    canManageSuggestions && suggestions.length > 0 && h("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
+      suggestions.map((s) => h("span", {
+        key: s.id, style: { display: "flex", alignItems: "center", gap: 4, borderRadius: 999, padding: "3px 8px", fontSize: 11, backgroundColor: theme.surfaceAlt, color: theme.textMuted },
+      },
+        s.titel,
+        h("button", { onClick: () => onDeleteSuggestion(s.id), style: { display: "flex", color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 10 }))
+      ))
+    ),
+    h("input", { value: titel, onChange: (e) => setTitel(e.target.value), placeholder: t("Titel (z.B. Bad putzen)"), style: { backgroundColor: theme.surface, color: theme.text, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
+    h("div", { style: { display: "flex", gap: 6 } },
+      h("button", { onClick: () => setRhythmus("woechentlich"), style: { flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, backgroundColor: rhythmus === "woechentlich" ? theme.accent : theme.surfaceAlt, color: rhythmus === "woechentlich" ? theme.accentForeground : theme.textMuted } }, t("Wöchentlich")),
+      h("button", { onClick: () => setRhythmus("taeglich"), style: { flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, backgroundColor: rhythmus === "taeglich" ? theme.accent : theme.surfaceAlt, color: rhythmus === "taeglich" ? theme.accentForeground : theme.textMuted } }, t("Täglich"))
+    ),
+    rhythmus === "woechentlich" && h("div", null,
+      h("label", { style: { fontSize: 11, color: theme.textMuted, display: "block", marginBottom: 4 } }, t("Wochentag")),
+      h("select", { value: wochentag, onChange: (e) => setWochentag(e.target.value), style: { width: "100%", backgroundColor: theme.surface, color: theme.text, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } },
+        WOCHENTAGE.map((d, i) => h("option", { key: i, value: i + 1 }, d))
+      )
+    ),
+    h("div", null,
+      h("label", { style: { fontSize: 11, color: theme.textMuted, display: "block", marginBottom: 4 } }, assigneeIds.length > 1 ? t("Rotation zwischen:") : t("Zugewiesen an:")),
+      h("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
+        members.map((m) => h("button", {
+          key: m.id, onClick: () => toggleAssignee(m.id),
+          style: {
+            display: "flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 600,
+            border: `1px solid ${assigneeIds.includes(m.id) ? m.farbe : theme.border}`,
+            backgroundColor: assigneeIds.includes(m.id) ? hexA(m.farbe, 0.18) : "transparent",
+            color: assigneeIds.includes(m.id) ? m.farbe : theme.textMuted,
+          },
+        }, m.name))
+      ),
+      assigneeIds.length > 1 && h("p", { style: { fontSize: 11, color: theme.textMuted, margin: "4px 0 0" } }, t("Wechselt automatisch jede Woche in dieser Reihenfolge."))
+    ),
+    canManageSuggestions && h("label", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: theme.textMuted } },
+      h("input", { type: "checkbox", checked: merken, onChange: (e) => setMerken(e.target.checked) }),
+      t("Auch als Vorschlag merken")
+    ),
+    h("div", { style: { display: "flex", gap: 6 } },
+      h("button", { onClick: onCancel, style: { flex: 1, padding: "8px 0", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13 } }, t("Abbrechen")),
+      h("button", { onClick: submit, disabled: saving || !titel.trim() || assigneeIds.length === 0, style: { flex: 1, padding: "8px 0", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600, opacity: saving || !titel.trim() || assigneeIds.length === 0 ? 0.6 : 1 } }, saving ? t("Speichert…") : t("Speichern"))
+    )
+  );
+}
+
+function HouseholdTaskCard({ theme, task, assigneeName, canToggle, done, onToggle, canDelete, onDelete }) {
+  return h("div", { style: { minHeight: 44, borderRadius: 10, border: `1px solid ${theme.border}`, backgroundColor: done ? hexA(theme.accent, 0.12) : theme.surface, padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 } },
+    h("div", { style: { display: "flex", alignItems: "flex-start", gap: 6 } },
+      h("button", {
+        onClick: () => canToggle && onToggle(),
+        disabled: !canToggle,
+        style: { width: 18, height: 18, flexShrink: 0, borderRadius: 6, border: `1px solid ${done ? theme.accent : theme.border}`, backgroundColor: done ? theme.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1, opacity: canToggle ? 1 : 0.5 },
+      }, done && React.createElement(Check, { size: 12, color: theme.accentForeground })),
+      h("div", { style: { minWidth: 0, flex: 1 } },
+        h("p", { style: { fontSize: 12, fontWeight: 600, color: theme.text, margin: 0, textDecoration: done ? "line-through" : "none" } }, task.titel),
+        h("p", { style: { fontSize: 10, color: theme.textMuted, margin: "1px 0 0" } }, assigneeName)
+      ),
+      canDelete && h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(), style: { flexShrink: 0, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 12 }))
+    )
+  );
+}
+
+function HaushaltsplanModule({ theme, members, activeMember, tasks, assignees, completions, canEditOthers, onCreateTask, onDeleteTask, onToggleCompletion, suggestions, onSaveSuggestion, onDeleteSuggestion }) {
+  const [showForm, setShowForm] = useState(false);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayISO = isoDate(today);
+  const monday = startOfWeek(today);
+  const memberById = (id) => members.find((m) => m.id === id);
+  const isDone = (taskId, dISO, memberId) => completions.some((c) => c.task_id === taskId && c.datum === dISO && c.member_id === memberId);
+  const canToggleFor = (assigneeId) => canEditOthers || assigneeId === activeMember?.id;
+
+  const dailyTasks = tasks.filter((t) => t.rhythmus === "taeglich");
+  const weekColumns = WOCHENTAGE.map((label, wIdx) => {
+    const colDate = addDays(monday, wIdx);
+    const colTasks = tasks.filter((t) => t.rhythmus === "woechentlich" && t.wochentag === wIdx + 1);
+    return { label, date: colDate, isToday: isoDate(colDate) === todayISO, tasks: colTasks };
+  });
+
+  // Heutiger Fortschritt + Streak pro Person, die aktuell mind. eine
+  // Aufgabe zugewiesen hat (unabhaengig von Rotation).
+  const assignedMemberIds = [...new Set(assignees.map((a) => a.member_id))];
+  const progressByMember = assignedMemberIds.map((id) => {
+    const dueToday = tasks.filter((task) => householdIsDueOn(task, today) && householdCurrentAssignee(task.id, assignees, today) === id);
+    const doneToday = dueToday.filter((task) => isDone(task.id, todayISO, id)).length;
+    const streak = householdStreak(id, tasks, assignees, completions, addDays(today, -1));
+    return { member: memberById(id), due: dueToday.length, done: doneToday, streak };
+  }).filter((p) => p.member);
+
+  return h("div", { style: { maxWidth: 900, margin: "0 auto", width: "100%" } },
+    h(PageHead, {
+      theme, title: t("Haushaltsplan"), subtitle: t("Wer macht was im Haushalt – und wann."),
+      action: h(AddButton, { theme, label: t("Aufgabe"), onClick: () => setShowForm(true) }),
+    }),
+    showForm && h("div", { style: { marginBottom: 16 } }, h(HouseholdTaskForm, {
+      theme, members, suggestions, canManageSuggestions: canEditOthers,
+      onCreate: async (payload) => { await onCreateTask(payload); setShowForm(false); },
+      onCancel: () => setShowForm(false),
+      onSaveSuggestion, onDeleteSuggestion,
+    })),
+    progressByMember.length > 0 && h("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16 } },
+      progressByMember.map((p) => h("div", { key: p.member.id, style: { display: "flex", alignItems: "center", gap: 8, borderRadius: 12, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: "8px 12px" } },
+        h("span", { style: { width: 26, height: 26, borderRadius: "50%", backgroundColor: p.member.farbe, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, p.member.name[0]),
+        h("div", null,
+          h("p", { style: { fontSize: 12, fontWeight: 600, color: theme.text, margin: 0 } }, p.member.name),
+          h("p", { style: { fontSize: 11, color: theme.textMuted, margin: 0 } }, tf("Heute {done}/{total}", { done: p.done, total: p.due }) + (p.streak > 0 ? " · 🔥 " + tf("{n} Tage in Folge", { n: p.streak }) : ""))
+        )
+      ))
+    ),
+    dailyTasks.length > 0 && h("div", { style: { marginBottom: 16 } },
+      h("p", { style: { fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", margin: "0 0 8px" } }, t("Täglich")),
+      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 } },
+        dailyTasks.map((task) => {
+          const assigneeId = householdCurrentAssignee(task.id, assignees, today);
+          return h(HouseholdTaskCard, {
+            key: task.id, theme, task, assigneeName: memberById(assigneeId)?.name || "",
+            canToggle: canToggleFor(assigneeId), done: isDone(task.id, todayISO, assigneeId),
+            onToggle: () => onToggleCompletion(task.id, todayISO, assigneeId, !isDone(task.id, todayISO, assigneeId)),
+            canDelete: canEditOthers, onDelete: () => onDeleteTask(task.id),
+          });
+        })
+      )
+    ),
+    h("div", { style: { overflowX: "auto" } },
+      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, minmax(120px, 1fr))", gap: 8, minWidth: 700 } },
+        weekColumns.map((col) => h("div", { key: col.label + col.date, style: { display: "flex", flexDirection: "column", gap: 6 } },
+          h("p", { style: { fontSize: 11, fontWeight: 700, textTransform: "uppercase", textAlign: "center", color: col.isToday ? theme.accent : theme.textMuted, margin: 0 } }, col.label),
+          col.tasks.length === 0
+            ? h("div", { style: { minHeight: 44, borderRadius: 10, border: `1px dashed ${theme.border}` } })
+            : col.tasks.map((task) => {
+                const assigneeId = householdCurrentAssignee(task.id, assignees, col.date);
+                const dISO = isoDate(col.date);
+                return h(HouseholdTaskCard, {
+                  key: task.id, theme, task, assigneeName: memberById(assigneeId)?.name || "",
+                  canToggle: canToggleFor(assigneeId) && col.isToday, done: isDone(task.id, dISO, assigneeId),
+                  onToggle: () => onToggleCompletion(task.id, dISO, assigneeId, !isDone(task.id, dISO, assigneeId)),
+                  canDelete: canEditOthers, onDelete: () => onDeleteTask(task.id),
+                });
+              })
+        ))
+      )
+    )
+  );
+}
+
 function CategorySelect({ theme, categories, value, onChange, onCreate, style }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -3367,7 +3660,7 @@ function MyProfileSection({ theme, activeMember, onUpdateAvatar, onChangePasswor
 function bereiche() {
   return [
     { id: "familien_ueberblick", label: t("Familien-Überblick") },
-    { id: "kalender", label: t("Kalender") }, { id: "aufgaben", label: t("Aufgaben") }, { id: "einkauf", label: t("Einkauf") },
+    { id: "kalender", label: t("Kalender") }, { id: "aufgaben", label: t("Aufgaben") }, { id: "einkauf", label: t("Einkauf") }, { id: "haushaltsplan", label: t("Haushaltsplan") },
     { id: "erinnerungen", label: t("Erinnerungen") }, { id: "dokumente", label: t("Dokumente") }, { id: "wissen", label: t("Wissen") }, { id: "rezepte", label: t("Rezepte") }, { id: "essensplan", label: t("Essensplan") },
     { id: "finanzen", label: t("Finanzen") }, { id: "gesundheit", label: t("Gesundheit") }, { id: "kontakte", label: t("Kontakte") },
     { id: "voting", label: t("Voting") }, { id: "schule", label: t("Schule") },
@@ -3386,7 +3679,7 @@ function MemberPermissionsMatrix({ theme, members, rolePermissions, memberPermis
     return { sichtbar: r ? r.sichtbar : true, bearbeiten: r ? r.bearbeiten : false, nur_eigene: r ? r.nur_eigene : false };
   };
   const overrideFor = (bereich) => memberPermissions.find((p) => p.member_id === selectedId && p.bereich === bereich);
-  const showNurEigene = (bereich) => ["aufgaben", "kalender", "einkauf", "erinnerungen", "rezepte", "finanzen"].includes(bereich);
+  const showNurEigene = (bereich) => ["aufgaben", "kalender", "einkauf", "erinnerungen", "rezepte", "finanzen", "haushaltsplan"].includes(bereich);
 
   return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
     h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 4px" } }, t("Rechte für einzelne Person")),
@@ -3527,6 +3820,7 @@ function dashboardWidgets() {
     { id: "dokumente", label: t("Dokumentenstatus") },
     { id: "geburtstage", label: t("Geburtstage") },
     { id: "erinnerungen_karte", label: t("Erinnerungen-Kachel") },
+    { id: "haushaltsplan_heute", label: t("Haushaltsplan heute") },
     { id: "kategorien", label: t("Kategorie-Kacheln") },
     { id: "schnellaktionen", label: t("Schnellaktionen (Termin/Aufgabe/Einkauf anlegen)") },
   ];
@@ -3649,6 +3943,7 @@ function SettingsModule({
 function OverviewModule({
   theme, activeMember, members, tasks, reminders, events, shoppingItems, documents, upcomingBirthdays,
   votes, isPhone, setActiveTab, suggestions, ignoredSuggestions, ignoreSuggestion, personalOnly, isWidgetEnabled,
+  householdTasks, householdAssignees, householdCompletions,
 }) {
   const show = (widget) => !personalOnly || isWidgetEnabled(widget);
   const isMine = (e) => e.member_id === activeMember.id || (e.member_ids || []).includes(activeMember.id);
@@ -3694,7 +3989,7 @@ function OverviewModule({
         .map((e) => ({ ...e, start: new Date(e.start_zeit) }))
         .sort((a, b) => a.start - b.start),
     }),
-    (show("dokumente") || show("geburtstage") || show("erinnerungen_karte")) && h("div", { style: { display: "grid", gridTemplateColumns: isPhone ? "1fr" : "repeat(3, 1fr)", gap: 20 } },
+    (show("dokumente") || show("geburtstage") || show("erinnerungen_karte") || show("haushaltsplan_heute")) && h("div", { style: { display: "grid", gridTemplateColumns: isPhone ? "1fr" : "repeat(3, 1fr)", gap: 20 } },
       show("dokumente") && h(InfoCard, { theme, title: t("Dokumentenstatus"), icon: FileText, tone: theme.eventBlue, onNavigate: () => setActiveTab("dokumente"), navLabel: t("Ablage") },
         h("ul", { style: { display: "flex", flexDirection: "column", listStyle: "none", margin: 0, padding: 0 } },
           [
@@ -3722,7 +4017,23 @@ function OverviewModule({
           h("span", { style: { fontSize: 34, fontWeight: 700, color: theme.text, fontVariantNumeric: "tabular-nums" } }, reminders.filter((r) => r.status === "offen").length),
           h("p", { style: { fontSize: 13, color: theme.textMuted, margin: 0, lineHeight: 1.5 } }, "offene Fristen")
         )
-      )
+      ),
+      show("haushaltsplan_heute") && (() => {
+        const heute = new Date(); heute.setHours(0, 0, 0, 0);
+        const heuteISO = isoDate(heute);
+        const dueHeute = (householdTasks || []).filter((task) => householdIsDueOn(task, heute))
+          .filter((task) => !personalOnly || householdCurrentAssignee(task.id, householdAssignees || [], heute) === activeMember.id);
+        const erledigt = dueHeute.filter((task) => (householdCompletions || []).some((c) => c.task_id === task.id && c.datum === heuteISO
+          && c.member_id === householdCurrentAssignee(task.id, householdAssignees || [], heute))).length;
+        return h(InfoCard, { theme, title: t("Haushaltsplan"), icon: SprayCan, tone: theme.eventGreen, onNavigate: () => setActiveTab("haushaltsplan"), navLabel: t("Zum Haushaltsplan") },
+          dueHeute.length === 0
+            ? h("p", { style: { fontSize: 13, color: theme.textMuted, margin: 0 } }, t("Heute nichts zu tun."))
+            : h("div", { style: { display: "flex", alignItems: "center", gap: 14 } },
+                h("span", { style: { fontSize: 34, fontWeight: 700, color: theme.text, fontVariantNumeric: "tabular-nums" } }, tf("{done}/{total}", { done: erledigt, total: dueHeute.length })),
+                h("p", { style: { fontSize: 13, color: theme.textMuted, margin: 0, lineHeight: 1.5 } }, t("heute erledigt"))
+              )
+        );
+      })()
     ),
     show("schnellaktionen") && h("section", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
       [
@@ -3764,6 +4075,13 @@ function App() {
     document.documentElement.style.backgroundColor = THEMES.dunkel.sidebar;
     document.body.style.backgroundColor = THEMES.dunkel.sidebar;
   }, [theme]);
+
+  const [updateAvailable, setUpdateAvailable] = useState(!!window.__fzUpdateAvailable);
+  useEffect(() => {
+    const onUpdate = () => setUpdateAvailable(true);
+    window.addEventListener("fz-update-available", onUpdate);
+    return () => window.removeEventListener("fz-update-available", onUpdate);
+  }, []);
   const [session, setSession] = useState(undefined); // undefined=lädt, null=abgemeldet, Objekt=angemeldet
   const [banner, setBanner] = useState(null);
   const [members, setMembers] = useState([]);
@@ -4472,6 +4790,75 @@ function App() {
     else { loadExams(); loadEvents(); }
   }, [loadExams, loadEvents, pushEventToApple]);
 
+  // ── Haushaltsplan ─────────────────────────────────────────
+  const [householdTasks, setHouseholdTasks] = useState([]);
+  const loadHouseholdTasks = useCallback(async () => {
+    const { data, error } = await supabase.from("household_tasks").select("*").eq("geloescht", false).order("created_at");
+    if (!error) setHouseholdTasks(data || []); else setBanner(error.message);
+  }, []);
+  useEffect(() => { if (authReady) loadHouseholdTasks(); }, [authReady, loadHouseholdTasks]);
+
+  const [householdAssignees, setHouseholdAssignees] = useState([]);
+  const loadHouseholdAssignees = useCallback(async () => {
+    const { data, error } = await supabase.from("household_task_assignees").select("*");
+    if (!error) setHouseholdAssignees(data || []); else setBanner(error.message);
+  }, []);
+  useEffect(() => { if (authReady) loadHouseholdAssignees(); }, [authReady, loadHouseholdAssignees]);
+
+  const [householdCompletions, setHouseholdCompletions] = useState([]);
+  const loadHouseholdCompletions = useCallback(async () => {
+    // 90 Tage Verlauf reichen für Streak/Konsistenz-Anzeige und halten die
+    // Abfrage klein, statt die komplette Historie jedes Mal zu laden.
+    const since = isoDate(addDays(new Date(), -90));
+    const { data, error } = await supabase.from("household_task_completions").select("*").gte("datum", since);
+    if (!error) setHouseholdCompletions(data || []); else setBanner(error.message);
+  }, []);
+  useEffect(() => { if (authReady) loadHouseholdCompletions(); }, [authReady, loadHouseholdCompletions]);
+
+  const createHouseholdTask = useCallback(async ({ titel, rhythmus, wochentag, assigneeIds }) => {
+    const { data: task, error } = await supabase.from("household_tasks").insert({ titel, rhythmus, wochentag }).select().single();
+    if (error) { setBanner(error.message); return; }
+    const rows = assigneeIds.map((member_id, i) => ({ task_id: task.id, member_id, rotation_order: i }));
+    const { error: assigneeErr } = await supabase.from("household_task_assignees").insert(rows);
+    if (assigneeErr) setBanner(assigneeErr.message);
+    loadHouseholdTasks(); loadHouseholdAssignees();
+  }, [loadHouseholdTasks, loadHouseholdAssignees]);
+
+  const deleteHouseholdTask = useCallback(async (id) => {
+    const { error } = await supabase.from("household_tasks").update({ geloescht: true }).eq("id", id);
+    if (error) setBanner(error.message); else loadHouseholdTasks();
+  }, [loadHouseholdTasks]);
+
+  const toggleHouseholdCompletion = useCallback(async (taskId, datum, memberId, done) => {
+    if (!memberId) return;
+    if (done) {
+      const { error } = await supabase.from("household_task_completions").insert({ task_id: taskId, datum, member_id: memberId });
+      if (error) { setBanner(error.message); return; }
+      loadHouseholdCompletions();
+    } else {
+      const { error } = await supabase.from("household_task_completions").delete().eq("task_id", taskId).eq("datum", datum);
+      if (error) { setBanner(error.message); return; }
+      loadHouseholdCompletions();
+    }
+  }, [loadHouseholdCompletions]);
+
+  const [householdSuggestions, setHouseholdSuggestions] = useState([]);
+  const loadHouseholdSuggestions = useCallback(async () => {
+    const { data, error } = await supabase.from("household_task_suggestions").select("*").order("created_at");
+    if (!error) setHouseholdSuggestions(data || []); else setBanner(error.message);
+  }, []);
+  useEffect(() => { if (authReady) loadHouseholdSuggestions(); }, [authReady, loadHouseholdSuggestions]);
+
+  const createHouseholdSuggestion = useCallback(async ({ titel, rhythmus }) => {
+    const { error } = await supabase.from("household_task_suggestions").insert({ titel, rhythmus });
+    if (error) setBanner(error.message); else loadHouseholdSuggestions();
+  }, [loadHouseholdSuggestions]);
+
+  const deleteHouseholdSuggestion = useCallback(async (id) => {
+    const { error } = await supabase.from("household_task_suggestions").delete().eq("id", id);
+    if (error) setBanner(error.message); else loadHouseholdSuggestions();
+  }, [loadHouseholdSuggestions]);
+
   // ── Finanzen ──────────────────────────────────────────────
   const [financeEntries, setFinanceEntries] = useState([]);
   const loadFinance = useCallback(async () => {
@@ -4679,6 +5066,10 @@ function App() {
       .on("postgres_changes", { event: "*", schema: "public", table: "timetable_entries" }, loadTimetable)
       .on("postgres_changes", { event: "*", schema: "public", table: "grades" }, loadGrades)
       .on("postgres_changes", { event: "*", schema: "public", table: "exams" }, loadExams)
+      .on("postgres_changes", { event: "*", schema: "public", table: "household_tasks" }, loadHouseholdTasks)
+      .on("postgres_changes", { event: "*", schema: "public", table: "household_task_assignees" }, loadHouseholdAssignees)
+      .on("postgres_changes", { event: "*", schema: "public", table: "household_task_completions" }, loadHouseholdCompletions)
+      .on("postgres_changes", { event: "*", schema: "public", table: "household_task_suggestions" }, loadHouseholdSuggestions)
       .on("postgres_changes", { event: "*", schema: "public", table: "finance_entries" }, loadFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "payee_categories" }, loadPayeeCategories)
       .on("postgres_changes", { event: "*", schema: "public", table: "finance_categories" }, loadFinanceCategories)
@@ -4805,6 +5196,12 @@ function App() {
       h("div", { onClick: () => setMobileNavOpen(false), style: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" } })
     ),
     h("div", { style: { flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" } },
+      updateAvailable && h("div", {
+        style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 20px", backgroundColor: hexA(theme.accent, 0.15), borderBottom: `1px solid ${theme.accent}` },
+      },
+        h("p", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: theme.text, margin: 0 } }, React.createElement(Sparkles, { size: 14 }), t("Eine neue Version ist verfügbar.")),
+        h("button", { onClick: () => window.location.reload(), style: { color: theme.accent, background: "none", fontSize: 13, fontWeight: 600 } }, t("Jetzt aktualisieren"))
+      ),
       banner && h("div", {
         style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 20px", backgroundColor: theme.destructive + "26", borderBottom: `1px solid ${theme.destructive}` },
       },
@@ -4850,11 +5247,13 @@ function App() {
           ? h(OverviewModule, {
               theme, activeMember, members, tasks, reminders, events, shoppingItems, documents, upcomingBirthdays,
               votes, isPhone, setActiveTab, suggestions, ignoredSuggestions, ignoreSuggestion, personalOnly: false, isWidgetEnabled,
+              householdTasks, householdAssignees, householdCompletions,
             })
           : activeTab === "mein_ueberblick"
           ? h(OverviewModule, {
               theme, activeMember, members, tasks, reminders, events, shoppingItems, documents, upcomingBirthdays,
               votes, isPhone, setActiveTab, suggestions, ignoredSuggestions, ignoreSuggestion, personalOnly: true, isWidgetEnabled,
+              householdTasks, householdAssignees, householdCompletions,
             })
           : activeTab === "kalender"
           ? h(CalendarModule, { theme, members, activeMember, events, onAddEvent: addEvent, onDeleteEvent: deleteEvent, onUpdateEvent: updateEvent, loading: eventsLoading, canEditOthers: canEditOthers("kalender") })
@@ -4903,6 +5302,14 @@ function App() {
               onAssignTimetable: assignTimetable, onClearTimetable: clearTimetable,
               onAddGrade: addGrade, onDeleteGrade: deleteGrade,
               onAddExam: addExam, onDeleteExam: deleteExam,
+            })
+          : activeTab === "haushaltsplan"
+          ? h(HaushaltsplanModule, {
+              theme, members, activeMember,
+              tasks: householdTasks, assignees: householdAssignees, completions: householdCompletions,
+              canEditOthers: canEditOthers("haushaltsplan"),
+              onCreateTask: createHouseholdTask, onDeleteTask: deleteHouseholdTask, onToggleCompletion: toggleHouseholdCompletion,
+              suggestions: householdSuggestions, onSaveSuggestion: createHouseholdSuggestion, onDeleteSuggestion: deleteHouseholdSuggestion,
             })
           : activeTab === "finanzen"
           ? h(FinanceModule, { theme, entries: financeEntries, onAdd: addFinanceEntry, onDelete: deleteFinanceEntry, onUpdate: updateFinanceEntry, payeeCategories, financeCategories, onCreateCategory: createFinanceCategory, onRenameCategory: renameFinanceCategory, onDeleteCategory: deleteFinanceCategory, onImport: importFinanceRows })
