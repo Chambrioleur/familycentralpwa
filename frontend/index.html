@@ -10,21 +10,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 <meta name="apple-mobile-web-app-title" content="Familienzentrale" />
 <meta name="mobile-web-app-capable" content="yes" />
-<meta name="theme-color" content="#0B1220" />
+<meta name="theme-color" content="#000000" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <meta name="app-build" content="2026-07-21-1" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" />
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; font-family: 'Geist', sans-serif; overscroll-behavior: none; overflow: hidden; height: 100%; }
+  html, body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif; overscroll-behavior: none; overflow: hidden; height: 100%; }
   body { position: fixed; inset: 0; width: 100%; }
-  [style*="tabular-nums"] { font-family: 'Geist Mono', monospace; }
+  [style*="tabular-nums"] { font-variant-numeric: tabular-nums; }
   button { font-family: inherit; cursor: pointer; border: none; }
-  /* iOS zoomt Formularfelder automatisch auf, wenn die Schrift < 16px ist */
+  /* iOS auto-zooms form fields when the font size is below 16px */
   input, select, textarea { font-family: inherit; font-size: 16px !important; }
+  input[type="checkbox"] { accent-color: var(--accent, #2c9aad); width: 16px; height: 16px; }
   #root { height: 100vh; height: 100dvh; height: var(--app-height, 100dvh); overflow: hidden; }
+  @keyframes fz-spin { to { transform: rotate(360deg); } }
+  .fz-spinner { animation: fz-spin 0.8s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .fz-spinner { animation: none; } }
 </style>
 </head>
 <body>
@@ -157,7 +160,7 @@ const SUPABASE_ANON_KEY = FZ_CONFIG.SUPABASE_ANON_KEY;
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   document.getElementById("root").innerHTML =
     '<div style="height:100%;display:flex;align-items:center;justify-content:center;padding:24px;' +
-    'background:#070b14;color:#e8edf3;font-family:Geist,sans-serif;line-height:1.6;text-align:center">' +
+    'background:#000000;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.6;text-align:center">' +
     "<div><strong>config.js fehlt oder ist unvollständig.</strong><br />" +
     "Bitte <code>config.example.js</code> nach <code>config.js</code> kopieren, " +
     "die Supabase-Zugangsdaten eintragen und die Datei mit hochladen.</div></div>";
@@ -298,6 +301,7 @@ const TRANSLATIONS = {
     "Benachrichtigungen": "Notifications",
     "Berechtigung nicht erteilt.": "Permission not granted.",
     "Bereich": "Area",
+    "Bestätigen": "Confirm",
     "Betrag (+/- €)": "Amount (+/- €)",
     "Betrifft nur deine eigene, persönliche Übersicht — nicht den Familien-Überblick.": "Affects only your own personal overview — not the family overview.",
     "Bier": "Beer",
@@ -356,6 +360,7 @@ const TRANSLATIONS = {
     "Essensplan": "Meal plan",
     "Essig": "Vinegar",
     "Exportiert…": "Exporting…",
+    "Export gestartet — die Datei wird heruntergeladen.": "Export started — the file is downloading.",
     "Familie": "Family",
     "Familie (ohne Person)": "Family (no person)",
     "Familien-Überblick": "Family overview",
@@ -372,6 +377,8 @@ const TRANSLATIONS = {
     "Frist": "Deadline",
     "Fristen": "Deadlines",
     "Fristen im Blick behalten.": "Keep track of deadlines.",
+    "Fristen, die du hinzufügst, erscheinen hier.": "Deadlines you add will show up here.",
+    "Füge oben einen Artikel hinzu.": "Add an item above.",
     "Frühstück": "Breakfast",
     "Fächer": "Subjects",
     "Fällig am (optional)": "Due date (optional)",
@@ -541,7 +548,9 @@ const TRANSLATIONS = {
     "Niedrig": "Low",
     "Noch keine Einträge.": "No entries yet.",
     "Noch keine Ideen gesammelt.": "No ideas collected yet.",
+    "Noch keine Kinder angelegt": "No children added yet",
     "Noch keine Kinder angelegt — unter Einstellungen → Personen lässt sich das ergänzen.": "No children added yet — you can add them under Settings → People.",
+    "Unter Einstellungen → Personen lässt sich das ergänzen.": "You can add them under Settings → People.",
     "Noch keine Noten erfasst.": "No grades recorded yet.",
     "Noch keine Rezepte in dieser Kategorie.": "No recipes in this category yet.",
     "Note": "Grade",
@@ -763,20 +772,20 @@ const AUTO_LOCK_MS = 5 * 60 * 1000;
 
 const THEMES = {
   hell: {
-    bg: "#eef1f5", surface: "#ffffff", surfaceAlt: "#e6ebf1", border: "#d7dee7",
-    text: "#0f1a2a", textMuted: "#5c6b7d", accent: "#0d9488", accentForeground: "#ffffff",
-    destructive: "#d9542b",
-    sidebar: "#0b1220", sidebarText: "#c3d2dd", sidebarMuted: "#7c93a8",
-    sidebarActive: "#16233a", sidebarActiveForeground: "#ffffff", sidebarBorder: "#1a2740",
-    eventBlue: "#2563eb", eventTeal: "#0d9488", eventAmber: "#d97706", eventCoral: "#dc2626", eventGreen: "#16a34a",
+    bg: "#f2f2f7", surface: "#ffffff", surfaceAlt: "#e5e5ea", border: "rgba(60,60,67,0.29)",
+    text: "#1c1c1e", textMuted: "#6e6e73", accent: "#2c9aad", accentForeground: "#ffffff",
+    destructive: "#ff3b30",
+    sidebar: "#f2f2f7", sidebarText: "#1c1c1e", sidebarMuted: "#6e6e73",
+    sidebarActive: "#e5e5ea", sidebarActiveForeground: "#1c1c1e", sidebarBorder: "rgba(60,60,67,0.29)",
+    eventBlue: "#007aff", eventTeal: "#2c9aad", eventAmber: "#ff9500", eventCoral: "#ff3b30", eventGreen: "#34c759",
   },
   dunkel: {
-    bg: "#070b14", surface: "#0f1826", surfaceAlt: "#16233a", border: "#1e3049",
-    text: "#e8eff5", textMuted: "#8296ab", accent: "#2dd4bf", accentForeground: "#04211d",
-    destructive: "#f0663d",
-    sidebar: "#080d17", sidebarText: "#c3d2dd", sidebarMuted: "#6f849a",
-    sidebarActive: "#14243c", sidebarActiveForeground: "#ffffff", sidebarBorder: "#16263e",
-    eventBlue: "#3b82f6", eventTeal: "#2dd4bf", eventAmber: "#f5b544", eventCoral: "#f0663d", eventGreen: "#4ade80",
+    bg: "#000000", surface: "#1c1c1e", surfaceAlt: "#2c2c2e", border: "rgba(84,84,88,0.6)",
+    text: "#ffffff", textMuted: "#98989d", accent: "#5ac8db", accentForeground: "#04211d",
+    destructive: "#ff453a",
+    sidebar: "#1c1c1e", sidebarText: "#ffffff", sidebarMuted: "#98989d",
+    sidebarActive: "#2c2c2e", sidebarActiveForeground: "#ffffff", sidebarBorder: "rgba(84,84,88,0.6)",
+    eventBlue: "#0a84ff", eventTeal: "#5ac8db", eventAmber: "#ff9f0a", eventCoral: "#ff453a", eventGreen: "#30d158",
   },
 };
 
@@ -842,8 +851,7 @@ function AddMemberForm({ theme, onAdd }) {
     setSaving(false);
   };
 
-  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16, width: "100%", maxWidth: 320 } },
-    h("p", { style: { fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 } }, t("Person hinzufügen")),
+  return h("div", { style: { width: "100%" } },
     h("input", {
       value: name, onChange: (e) => setName(e.target.value), placeholder: t("Name"),
       style: { width: "100%", padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, marginBottom: 8, fontSize: 14 },
@@ -873,7 +881,7 @@ function AddMemberForm({ theme, onAdd }) {
       type: "password", value: pin, onChange: (e) => setPin(e.target.value), placeholder: t("Passwort/PIN (mind. 6 Zeichen)"),
       style: { width: "100%", padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, marginBottom: 8, fontSize: 14 },
     }),
-    error && h("p", { style: { fontSize: 12, color: "#C4562A", margin: "0 0 8px" } }, error),
+    error && h("p", { style: { fontSize: 12, color: theme.destructive, margin: "0 0 8px" } }, error),
     h("button", {
       onClick: submit, disabled: saving || !name.trim() || pin.length < 6,
       style: { width: "100%", padding: "8px 0", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600, fontSize: 14, opacity: saving || !name.trim() || pin.length < 6 ? 0.6 : 1 },
@@ -905,7 +913,7 @@ function BootstrapForm({ theme, onCreate }) {
 
   return h("div", { style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: theme.bg, gap: 16 } },
     h("div", { style: { textAlign: "center" } },
-      h("h1", { style: { fontSize: 22, fontWeight: 700, color: theme.text, fontFamily: "'Geist', sans-serif", margin: 0 } }, t("Familienzentrale einrichten")),
+      h("h1", { style: { fontSize: 22, fontWeight: 700, color: theme.text, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif", margin: 0 } }, t("Familienzentrale einrichten")),
       h("p", { style: { fontSize: 13, color: theme.textMuted, marginTop: 4, maxWidth: 280 } }, t("Lege dich als erste Person (Master) an — weitere Personen fügst du danach in den Einstellungen hinzu."))
     ),
     h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 18, width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 10 } },
@@ -914,7 +922,7 @@ function BootstrapForm({ theme, onCreate }) {
         FARBEN.map((f) => h("button", { key: f, onClick: () => setFarbe(f), style: { width: 24, height: 24, borderRadius: "50%", backgroundColor: f, outline: farbe === f ? "2px solid " + theme.text : "none", outlineOffset: 2 } }))
       ),
       h("input", { type: "password", value: pin, onChange: (e) => setPin(e.target.value), onKeyDown: (e) => e.key === "Enter" && submit(), placeholder: t("Passwort/PIN (mind. 6 Zeichen)"), style: { backgroundColor: theme.surface, color: theme.text, padding: "10px 12px", borderRadius: 10, border: `1px solid ${theme.border}` } }),
-      error && h("p", { style: { fontSize: 12, color: "#C4562A", margin: 0 } }, error),
+      error && h("p", { style: { fontSize: 12, color: theme.destructive, margin: 0 } }, error),
       h("button", { onClick: submit, disabled: busy, style: { padding: "10px 0", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600, opacity: busy ? 0.7 : 1 } }, busy ? t("Richte ein…") : t("Los geht's"))
     )
   );
@@ -963,7 +971,7 @@ function PersonLogin({ theme, onBootstrapCreate }) {
         onKeyDown: (e) => e.key === "Enter" && submitPin(), placeholder: t("PIN/Passwort"), autoFocus: true,
         style: { padding: "10px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, width: "100%", maxWidth: 240, textAlign: "center" },
       }),
-      error && h("p", { style: { fontSize: 12, color: "#C4562A", margin: 0 } }, error),
+      error && h("p", { style: { fontSize: 12, color: theme.destructive, margin: 0 } }, error),
       h("button", { onClick: submitPin, disabled: busy, style: { padding: "10px 24px", borderRadius: 999, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600 } }, busy ? t("Prüft…") : t("Anmelden")),
       h("button", { onClick: () => { setSelected(null); setPin(""); setError(null); }, style: { background: "none", color: theme.textMuted, fontSize: 13 } }, "← Andere Person")
     );
@@ -971,7 +979,7 @@ function PersonLogin({ theme, onBootstrapCreate }) {
 
   return h("div", { style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", backgroundColor: theme.bg, gap: 24 } },
     h("div", { style: { textAlign: "center" } },
-      h("h1", { style: { fontSize: 24, fontWeight: 700, color: theme.text, fontFamily: "'Geist', sans-serif", margin: 0 } }, t("Wer bist du?")),
+      h("h1", { style: { fontSize: 24, fontWeight: 700, color: theme.text, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif", margin: 0 } }, t("Wer bist du?")),
       h("p", { style: { fontSize: 13, color: theme.textMuted, marginTop: 4 } }, "Familienzentrale")
     ),
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, width: "100%", maxWidth: 320 } },
@@ -991,7 +999,7 @@ function PersonLogin({ theme, onBootstrapCreate }) {
 function PageHead({ theme, title, subtitle, action }) {
   return h("header", { style: { marginBottom: 24, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 } },
     h("div", null,
-      h("h2", { style: { fontSize: 24, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.01em" } }, title),
+      h("h2", { style: { fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" } }, title),
       h("p", { style: { fontSize: 14, color: theme.textMuted, margin: "4px 0 0" } }, subtitle)
     ),
     action
@@ -1011,6 +1019,131 @@ function AddButton({ theme, label, onClick }) {
   );
 }
 
+function Switch({ theme, checked, onChange }) {
+  return h("button", {
+    role: "switch", "aria-checked": checked, onClick: () => onChange(!checked),
+    style: {
+      flexShrink: 0, width: 44, height: 26, borderRadius: 999, padding: 2, display: "flex",
+      alignItems: "center", justifyContent: checked ? "flex-end" : "flex-start",
+      backgroundColor: checked ? theme.accent : theme.surfaceAlt,
+      border: `1px solid ${checked ? theme.accent : theme.border}`,
+      transition: "background-color 0.15s, justify-content 0.15s",
+    },
+  },
+    h("span", { style: { width: 20, height: 20, borderRadius: "50%", backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" } })
+  );
+}
+
+function SettingsRow({ theme, label, sublabel, action }) {
+  return h("div", { style: { padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } },
+    h("div", { style: { minWidth: 0 } },
+      h("p", { style: { fontSize: 15, color: theme.text, margin: 0 } }, label),
+      sublabel && h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "2px 0 0" } }, sublabel)
+    ),
+    action
+  );
+}
+
+function Modal({ theme, title, onClose, children }) {
+  return h("div", {
+    onClick: onClose,
+    style: { position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)", padding: 20 },
+  },
+    h("div", {
+      onClick: (e) => e.stopPropagation(),
+      style: { backgroundColor: theme.surface, borderRadius: 16, border: `1px solid ${theme.border}`, padding: 20, width: "100%", maxWidth: 380, maxHeight: "85vh", overflowY: "auto" },
+    },
+      h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+        h("h3", { style: { fontSize: 17, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.01em" } }, title),
+        h("button", { onClick: onClose, style: { display: "flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: "50%", backgroundColor: theme.surfaceAlt, color: theme.textMuted } }, React.createElement(X, { size: 15 }))
+      ),
+      children
+    )
+  );
+}
+
+function Spinner({ theme, size }) {
+  const s = size || 22;
+  return h("div", { className: "fz-spinner", style: { width: s, height: s, borderRadius: "50%", border: `2.5px solid ${theme.border}`, borderTopColor: theme.accent } });
+}
+
+function LoadingScreen({ theme, label }) {
+  return h("div", { style: { minHeight: "100vh", display: "flex", flexDirection: "column", gap: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.bg } },
+    h(Spinner, { theme }),
+    h("p", { style: { color: theme.textMuted, fontSize: 13, margin: 0 } }, label)
+  );
+}
+
+function EmptyState({ theme, icon, title, hint }) {
+  return h("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "48px 24px", gap: 4 } },
+    h("div", { style: { display: "flex", width: 52, height: 52, borderRadius: "50%", backgroundColor: theme.surfaceAlt, alignItems: "center", justifyContent: "center", marginBottom: 8 } },
+      React.createElement(icon, { size: 22, color: theme.textMuted })
+    ),
+    h("p", { style: { fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 } }, title),
+    hint && h("p", { style: { fontSize: 13, color: theme.textMuted, margin: "2px 0 0", maxWidth: 320 } }, hint)
+  );
+}
+
+// Global confirmation-dialog system: replaces window.confirm() (an ugly
+// native browser dialog) with a styled modal, without having to thread
+// props through every caller. requestConfirm() can be called from
+// anywhere; ConfirmHost (mounted once in App) listens via a listener
+// singleton, since this legacy codebase has no React context.
+let confirmListener = null;
+function requestConfirm(message, onConfirm, options) {
+  if (confirmListener) confirmListener({ message, onConfirm, danger: options?.danger !== false, confirmLabel: options?.confirmLabel });
+}
+function ConfirmHost({ theme }) {
+  const [state, setState] = useState(null);
+  useEffect(() => {
+    confirmListener = setState;
+    return () => { confirmListener = null; };
+  }, []);
+  if (!state) return null;
+  return h(Modal, { theme, title: t("Bestätigen"), onClose: () => setState(null) },
+    h("p", { style: { fontSize: 14, color: theme.text, margin: "0 0 18px", lineHeight: 1.5 } }, state.message),
+    h("div", { style: { display: "flex", gap: 8 } },
+      h("button", { onClick: () => setState(null), style: { flex: 1, padding: "10px 0", borderRadius: 10, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 14, fontWeight: 500 } }, t("Abbrechen")),
+      h("button", {
+        onClick: () => { state.onConfirm(); setState(null); },
+        style: { flex: 1, padding: "10px 0", borderRadius: 10, backgroundColor: state.danger ? theme.destructive : theme.accent, color: "#fff", fontSize: 14, fontWeight: 600 },
+      }, state.confirmLabel || t("Löschen"))
+    )
+  );
+}
+
+// Global toast system: replaces success/error messages that used to sit
+// permanently under buttons with briefly shown, self-dismissing notices.
+// Same listener-singleton pattern as the confirmation dialog, for the
+// same reason (no React context available).
+let toastListener = null;
+let toastCounter = 0;
+function showToast(text, kind, durationMs) {
+  if (toastListener) toastListener({ id: ++toastCounter, text, kind: kind || "success", durationMs: durationMs || 3800 });
+}
+function ToastHost() {
+  const [toasts, setToasts] = useState([]);
+  useEffect(() => {
+    toastListener = (toast) => {
+      setToasts((list) => [...list, toast]);
+      setTimeout(() => setToasts((list) => list.filter((x) => x.id !== toast.id)), toast.durationMs);
+    };
+    return () => { toastListener = null; };
+  }, []);
+  if (toasts.length === 0) return null;
+  return h("div", { style: { position: "fixed", bottom: "calc(24px + env(safe-area-inset-bottom))", left: "50%", transform: "translateX(-50%)", zIndex: 90, display: "flex", flexDirection: "column", gap: 8, alignItems: "center", pointerEvents: "none", width: "100%", padding: "0 16px" } },
+    toasts.map((toast) => h("div", {
+      key: toast.id,
+      style: {
+        display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderRadius: 12,
+        backgroundColor: toast.kind === "error" ? "#ff3b30" : "rgba(28,28,30,0.95)",
+        color: "#ffffff", fontSize: 14, fontWeight: 500, boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+        maxWidth: 420, textAlign: "center", lineHeight: 1.4,
+      },
+    }, toast.text))
+  );
+}
+
 const TONE_KEYS = ["eventBlue", "eventTeal", "eventAmber", "eventCoral", "eventGreen"];
 function toneColor(theme, key) { return theme[key] || theme.accent; }
 function toneByIndex(theme, i) { return theme[TONE_KEYS[i % TONE_KEYS.length]]; }
@@ -1027,7 +1160,7 @@ function hexA(hex, alpha) {
 
 function PlaceholderModule({ label, theme }) {
   return h("div", { style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "64px 32px", borderRadius: 16, backgroundColor: theme.surface, border: `1px solid ${theme.border}` } },
-    h("h3", { style: { fontSize: 18, fontWeight: 600, color: theme.text, fontFamily: "'Geist', sans-serif", marginBottom: 6 } }, label),
+    h("h3", { style: { fontSize: 18, fontWeight: 600, color: theme.text, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif", marginBottom: 6 } }, label),
     h("p", { style: { fontSize: 14, color: theme.textMuted } }, t("Wird als Nächstes gebaut (siehe Umsetzungsplan)"))
   );
 }
@@ -1135,7 +1268,7 @@ function EventForm({ theme, members, defaultDate, onSave, onCancel, canPrivate, 
       h("input", { type: "checkbox", checked: istPrivat, onChange: (e) => setIstPrivat(e.target.checked) }), t("Privat (vor Kindern verbergen)")
     ),
     h("div", { style: { display: "flex", gap: 8, marginTop: 4 } },
-      event && onDelete && h("button", { onClick: () => { if (window.confirm(tf('"{titel}" löschen?', { titel: event.titel }))) onDelete(event.id); }, style: { padding: "8px 12px", borderRadius: 8, backgroundColor: hexA(theme.destructive, 0.15), color: theme.destructive, fontSize: 13, fontWeight: 500 } }, t("Löschen")),
+      event && onDelete && h("button", { onClick: () => requestConfirm(tf('"{titel}" löschen?', { titel: event.titel }), () => onDelete(event.id)), style: { padding: "8px 12px", borderRadius: 8, backgroundColor: hexA(theme.destructive, 0.15), color: theme.destructive, fontSize: 13, fontWeight: 500 } }, t("Löschen")),
       h("button", { onClick: onCancel, style: { flex: 1, padding: "8px 0", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, t("Abbrechen")),
       h("button", { onClick: submit, disabled: saving || !titel.trim(), style: { flex: 1, padding: "8px 0", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600, opacity: saving || !titel.trim() ? 0.6 : 1 } }, saving ? t("Speichert…") : t("Speichern"))
     )
@@ -1154,7 +1287,7 @@ function SimpleList({ theme, items, onToggle, onDelete, renderMeta }) {
       h("p", { style: { fontSize: 14, color: theme.text, margin: 0, textDecoration: item.done ? "line-through" : "none", opacity: item.done ? 0.55 : 1 } }, item.titel),
       renderMeta && h("p", { style: { fontSize: 11, color: theme.textMuted, margin: 0 } }, renderMeta(item))
     ),
-    h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(item.id), style: { color: theme.textMuted, background: "none", fontSize: 13, flexShrink: 0 } }, React.createElement(X, { size: 14 }))
+    h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(item.id)), style: { color: theme.textMuted, background: "none", fontSize: 13, flexShrink: 0 } }, React.createElement(X, { size: 14 }))
   );
   return h("div", null,
     offen.map(row),
@@ -1247,6 +1380,7 @@ function TasksModule({ theme, members, activeMember, tasks, onAdd, onToggle, onD
   const [wiederholung, setWiederholung] = useState("");
   const [intervallTage, setIntervallTage] = useState(7);
   const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
   const [filterPerson, setFilterPerson] = useState(activeMember?.id || "alle");
   const [filterStatus, setFilterStatus] = useState("offen");
@@ -1258,7 +1392,7 @@ function TasksModule({ theme, members, activeMember, tasks, onAdd, onToggle, onD
       titel: titel.trim(), member_id: memberId || null, frist: frist || null, prioritaet,
       wiederholung: wiederholung || null, wiederholung_intervall: wiederholung === "eigen" ? Number(intervallTage) || 7 : null,
     });
-    setTitel(""); setFrist("");
+    setTitel(""); setFrist(""); setShowForm(false);
   };
 
   const complete = async (task) => {
@@ -1295,7 +1429,7 @@ function TasksModule({ theme, members, activeMember, tasks, onAdd, onToggle, onD
         key: task.id,
         style: { display: "flex", alignItems: "flex-start", gap: 10, borderRadius: 12, border: `1px solid ${theme.border}`, borderLeft: `3px solid ${prioColor(theme, task.prioritaet || "mittel")}`, backgroundColor: theme.surface, padding: 12 },
       },
-        h("button", { onClick: () => complete(task), style: { marginTop: 2, display: "flex", width: 20, height: 20, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 6, border: `1px solid ${theme.border}`, backgroundColor: task.status === "erledigt" ? theme.accent : "transparent" } }, task.status === "erledigt" && React.createElement(Check, { size: 12, color: theme.accentForeground })),
+        h("button", { onClick: () => complete(task), style: { marginTop: 2, display: "flex", width: 20, height: 20, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 999, border: `1px solid ${theme.border}`, backgroundColor: task.status === "erledigt" ? theme.accent : "transparent" } }, task.status === "erledigt" && React.createElement(Check, { size: 12, color: theme.accentForeground })),
         h("div", { onClick: () => { if (canEditOthers || !task.member_id || task.member_id === activeMember?.id) setEditingId(task.id); }, style: { minWidth: 0, flex: 1, cursor: (canEditOthers || !task.member_id || task.member_id === activeMember?.id) ? "pointer" : "default" } },
           h("span", { style: { display: "block", fontSize: 14, fontWeight: 500, color: task.status === "erledigt" ? theme.textMuted : theme.text, textDecoration: task.status === "erledigt" ? "line-through" : "none" } }, task.titel),
           h("span", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 12, color: theme.textMuted, flexWrap: "wrap" } },
@@ -1306,25 +1440,26 @@ function TasksModule({ theme, members, activeMember, tasks, onAdd, onToggle, onD
             task.wiederholung && ` · ↻ ${TASK_wiederholungLabel()[task.wiederholung]}`
           )
         ),
-        (canEditOthers || !task.member_id || task.member_id === activeMember?.id) && h("button", { onClick: () => { if (window.confirm(t("Aufgabe löschen?"))) onDelete(task.id); }, style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+        (canEditOthers || !task.member_id || task.member_id === activeMember?.id) && h("button", { onClick: () => requestConfirm(t("Aufgabe löschen?"), () => onDelete(task.id)), style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
       );
 
   return h("div", { style: { maxWidth: 1152, margin: "0 auto", width: "100%" } },
     h(PageHead, {
       theme, title: t("Aufgaben"), subtitle: t("Wer macht was – und bis wann."),
-      action: h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } },
-        h("input", { value: titel, onChange: (e) => setTitel(e.target.value), placeholder: t("Neue Aufgabe…"), style: { backgroundColor: theme.surface, color: theme.text, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14, minWidth: 160 } }),
-        h(Dropdown, { theme, value: memberId, onChange: setMemberId, style: { width: 130 }, options: [{ value: "", label: t("Für alle") }, ...members.map((m) => ({ value: m.id, label: m.name }))] }),
-        h(LabeledDate, { theme, label: t("Fällig am (optional)"), value: frist, onChange: (e) => setFrist(e.target.value), style: { padding: "9px 10px", fontSize: 14 } }),
-        h(Dropdown, { theme, value: prioritaet, onChange: setPrioritaet, style: { width: 110 }, options: Object.entries(prioritaetLabel()).map(([k, v]) => ({ value: k, label: v })) }),
-        h(Dropdown, { theme, value: wiederholung, onChange: setWiederholung, style: { width: 140 }, options: [{ value: "", label: t("Einmalig") }, ...Object.entries(taskWiederholungLabel()).map(([k, v]) => ({ value: k, label: v }))] }),
-        wiederholung === "eigen" && h("div", { style: { display: "flex", alignItems: "center", gap: 4 } },
-          h("input", { type: "number", min: 1, value: intervallTage, onChange: (e) => setIntervallTage(e.target.value), style: { width: 55, backgroundColor: theme.surface, color: theme.text, padding: "8px 8px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 13 } }),
-          h("span", { style: { fontSize: 12, color: theme.textMuted } }, t("Tage"))
-        ),
-        h(AddButton, { theme, label: t("Aufgabe"), onClick: submit })
-      ),
+      action: h(AddButton, { theme, label: t("Aufgabe"), onClick: () => setShowForm((s) => !s) }),
     }),
+    showForm && h("div", { style: { marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
+      h("input", { value: titel, onChange: (e) => setTitel(e.target.value), placeholder: t("Neue Aufgabe…"), style: { backgroundColor: theme.surface, color: theme.text, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14, minWidth: 160 } }),
+      h(Dropdown, { theme, value: memberId, onChange: setMemberId, style: { width: 130 }, options: [{ value: "", label: t("Für alle") }, ...members.map((m) => ({ value: m.id, label: m.name }))] }),
+      h(LabeledDate, { theme, label: t("Fällig am (optional)"), value: frist, onChange: (e) => setFrist(e.target.value), style: { padding: "9px 10px", fontSize: 14 } }),
+      h(Dropdown, { theme, value: prioritaet, onChange: setPrioritaet, style: { width: 110 }, options: Object.entries(prioritaetLabel()).map(([k, v]) => ({ value: k, label: v })) }),
+      h(Dropdown, { theme, value: wiederholung, onChange: setWiederholung, style: { width: 140 }, options: [{ value: "", label: t("Einmalig") }, ...Object.entries(taskWiederholungLabel()).map(([k, v]) => ({ value: k, label: v }))] }),
+      wiederholung === "eigen" && h("div", { style: { display: "flex", alignItems: "center", gap: 4 } },
+        h("input", { type: "number", min: 1, value: intervallTage, onChange: (e) => setIntervallTage(e.target.value), style: { width: 55, backgroundColor: theme.surface, color: theme.text, padding: "8px 8px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 13 } }),
+        h("span", { style: { fontSize: 12, color: theme.textMuted } }, t("Tage"))
+      ),
+      h("button", { onClick: submit, style: { padding: "9px 18px", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600, fontSize: 14 } }, t("Speichern"))
+    ),
     h("div", { style: { marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" } },
       h(Dropdown, { theme, value: filterPerson, onChange: setFilterPerson, style: { width: 160 }, options: [{ value: "alle", label: t("Alle Personen") }, { value: "familie", label: t("Familie (ohne Person)") }, ...members.map((m) => ({ value: m.id, label: m.name }))] }),
       h(Dropdown, { theme, value: filterStatus, onChange: setFilterStatus, style: { width: 120 }, options: [{ value: "offen", label: t("Offen") }, { value: "erledigt", label: t("Erledigt") }, { value: "alle", label: t("Alle") }] }),
@@ -1390,10 +1525,11 @@ function RemindersModule({ theme, reminders, onAdd, onToggle, onDelete, onUpdate
   const [typ, setTyp] = useState("allgemein");
   const [wiederholung, setWiederholung] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
   const submit = async () => {
     if (!titel.trim()) return;
     await onAdd({ titel: titel.trim(), faelligkeit: faelligkeit || null, typ, wiederholung: wiederholung || null });
-    setTitel(""); setFaelligkeit("");
+    setTitel(""); setFaelligkeit(""); setShowForm(false);
   };
   const complete = async (r) => {
     if (r.wiederholung) {
@@ -1408,16 +1544,17 @@ function RemindersModule({ theme, reminders, onAdd, onToggle, onDelete, onUpdate
   return h("div", { style: { maxWidth: 720, margin: "0 auto", width: "100%" } },
     h(PageHead, {
       theme, title: t("Erinnerungen"), subtitle: t("Fristen im Blick behalten."),
-      action: h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
-        h("input", { value: titel, onChange: (e) => setTitel(e.target.value), placeholder: t("Neue Erinnerung…"), style: { backgroundColor: theme.surface, color: theme.text, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
-        h(Dropdown, { theme, value: typ, onChange: setTyp, style: { width: 130 }, options: [{ value: "allgemein", label: t("Allgemein") }, { value: "frist", label: t("Frist") }, { value: "geburtstag", label: t("Geburtstag") }] }),
-        h(LabeledDate, { theme, label: t("Fällig am (optional)"), value: faelligkeit, onChange: (e) => setFaelligkeit(e.target.value), style: { padding: "9px 10px", fontSize: 14 } }),
-        h(Dropdown, { theme, value: wiederholung, onChange: setWiederholung, style: { width: 130 }, options: [{ value: "", label: t("Einmalig") }, ...Object.entries(wiederholungLabel()).map(([k, v]) => ({ value: k, label: v }))] }),
-        h(AddButton, { theme, label: t("Erinnerung"), onClick: submit })
-      ),
+      action: h(AddButton, { theme, label: t("Erinnerung"), onClick: () => setShowForm((s) => !s) }),
     }),
+    showForm && h("div", { style: { marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
+      h("input", { value: titel, onChange: (e) => setTitel(e.target.value), placeholder: t("Neue Erinnerung…"), style: { backgroundColor: theme.surface, color: theme.text, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
+      h(Dropdown, { theme, value: typ, onChange: setTyp, style: { width: 130 }, options: [{ value: "allgemein", label: t("Allgemein") }, { value: "frist", label: t("Frist") }, { value: "geburtstag", label: t("Geburtstag") }] }),
+      h(LabeledDate, { theme, label: t("Fällig am (optional)"), value: faelligkeit, onChange: (e) => setFaelligkeit(e.target.value), style: { padding: "9px 10px", fontSize: 14 } }),
+      h(Dropdown, { theme, value: wiederholung, onChange: setWiederholung, style: { width: 130 }, options: [{ value: "", label: t("Einmalig") }, ...Object.entries(wiederholungLabel()).map(([k, v]) => ({ value: k, label: v }))] }),
+      h("button", { onClick: submit, style: { padding: "9px 18px", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600, fontSize: 14 } }, t("Speichern"))
+    ),
     h("ul", { style: { display: "flex", flexDirection: "column", gap: 10, listStyle: "none", margin: 0, padding: 0 } },
-      offen.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Keine offenen Erinnerungen.")),
+      offen.length === 0 && h(EmptyState, { theme, icon: BellRing, title: t("Keine offenen Erinnerungen."), hint: t("Fristen, die du hinzufügst, erscheinen hier.") }),
       offen.map((r, i) => {
         if (editingId === r.id) {
           return h(ReminderEditRow, { key: r.id, theme, reminder: r, onCancel: () => setEditingId(null), onSave: async (fields) => { await onUpdate(r.id, fields); setEditingId(null); } });
@@ -1439,7 +1576,7 @@ function RemindersModule({ theme, reminders, onAdd, onToggle, onDelete, onUpdate
             days < 0 ? t("überfällig") : days === 0 ? t("heute") : (LANG === "de" ? `in ${days} Tag${days === 1 ? "" : "en"}` : `in ${days} day${days === 1 ? "" : "s"}`)
           ),
           h("button", { onClick: () => complete(r), style: { flexShrink: 0, fontSize: 12, color: theme.accent, background: "none" } }, r.wiederholung ? t("Erledigt (↻)") : t("Erledigt")),
-          h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(r.id), style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+          h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(r.id)), style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
         );
       })
     )
@@ -1578,11 +1715,11 @@ function ShoppingModule({ theme, items, lists, activeListId, onSelectList, onCre
         : h("button", { onClick: () => setShowNewList(true), style: { borderRadius: 999, border: `1px dashed ${theme.border}`, color: theme.textMuted, padding: "7px 14px", fontSize: 13 } }, "+ Liste")
     ),
     activeListId && lists.length > 1 && h("button", {
-      onClick: () => { if (window.confirm(tf('Liste "{name}" wirklich löschen?', { name: lists.find(l=>l.id===activeListId)?.name }))) onDeleteList(activeListId); },
+      onClick: () => requestConfirm(tf('Liste "{name}" wirklich löschen?', { name: lists.find(l=>l.id===activeListId)?.name }), () => onDeleteList(activeListId)),
       style: { marginBottom: 12, fontSize: 12, color: theme.textMuted, background: "none" },
     }, t("Diese Liste löschen")),
     h("section", { style: { borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 20 } },
-      listItems.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted, margin: 0 } }, t("Liste ist leer.")),
+      listItems.length === 0 && h(EmptyState, { theme, icon: ShoppingCart, title: t("Liste ist leer."), hint: t("Füge oben einen Artikel hinzu.") }),
       h("ul", { style: { display: "flex", flexDirection: "column", listStyle: "none", margin: 0, padding: 0 } },
         [...offen, ...erledigt].map((item, i) => editingId === item.id
           ? h(ShoppingEditRow, { key: item.id, theme, item, onCancel: () => setEditingId(null), onSave: async (fields) => { await onUpdate(item.id, fields); onLearnSuggestion?.(fields.titel, fields.einheit); setEditingId(null); } })
@@ -1594,7 +1731,7 @@ function ShoppingModule({ theme, items, lists, activeListId, onSelectList, onCre
                 } }, item.erledigt && React.createElement(Check, { size: 12 })),
                 h("span", { onClick: () => setEditingId(item.id), style: { flex: 1, fontSize: 15, color: item.erledigt ? theme.textMuted : theme.text, textDecoration: item.erledigt ? "line-through" : "none", cursor: "pointer" } }, item.titel),
                 (item.menge || item.einheit) && h("span", { style: { fontSize: 13, color: theme.textMuted, fontVariantNumeric: "tabular-nums" } }, [item.menge, item.einheit].filter(Boolean).join(" ")),
-                h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(item.id), style: { fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+                h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(item.id)), style: { fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
               )
             ))
       )
@@ -1649,7 +1786,7 @@ function DocumentsModule({ theme, members, activeMember, documents, onUpload, on
       }, label))
     ),
     loading && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Lädt…")),
-    filtered.length === 0 && !loading && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Keine Dokumente in dieser Kategorie.")),
+    filtered.length === 0 && !loading && h(EmptyState, { theme, icon: FileText, title: t("Keine Dokumente in dieser Kategorie.") }),
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 } },
       filtered.map((d) => h("button", {
         key: d.id, onClick: () => openDoc(d),
@@ -1668,7 +1805,7 @@ function DocumentsModule({ theme, members, activeMember, documents, onUpload, on
             onClick: (e) => { e.stopPropagation(); onToggleStatus(d.id, d.status === "geprueft" ? "neu" : "geprueft"); },
             style: { fontSize: 11, color: theme.accent },
           }, d.status === "geprueft" ? t("Als neu markieren") : t("Als geprüft markieren")),
-          h("span", { onClick: (e) => { e.stopPropagation(); window.confirm(t("Wirklich löschen?")) && onDelete(d); }, style: { fontSize: 11, color: theme.textMuted } }, t("Löschen"))
+          h("span", { onClick: (e) => { e.stopPropagation(); requestConfirm(t("Wirklich löschen?"), () => onDelete(d)); }, style: { fontSize: 11, color: theme.textMuted } }, t("Löschen"))
         )
       ))
     )
@@ -1935,7 +2072,7 @@ function VotingModule({ theme, members, activeMember, votes, onCreateVote, onSet
         h("button", { onClick: submit, style: { flex: 1, padding: "7px 0", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, t("Anlegen"))
       )
     ),
-    votes.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Noch keine Ideen gesammelt.")),
+    votes.length === 0 && h(EmptyState, { theme, icon: Vote, title: t("Noch keine Ideen gesammelt."), hint: t("Schlage oben etwas zur Abstimmung vor.") }),
     h("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
       votes.map((v) => {
         const stances = v.idea_stances || [];
@@ -1998,19 +2135,21 @@ function WikiModule({ theme, entries, onAdd, onDelete }) {
       h("textarea", { value: inhalt, onChange: (e) => setInhalt(e.target.value), placeholder: t("Inhalt…"), rows: 3, style: { backgroundColor: theme.surface, color: theme.text, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14, resize: "vertical" } }),
       h("button", { onClick: submit, style: { alignSelf: "flex-start", padding: "7px 16px", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, t("Speichern"))
     ),
-    h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 } },
-      entries.map((e, i) => {
-        const tone = toneByIndex(theme, i);
-        return h("div", { key: e.id, style: { position: "relative", display: "flex", flexDirection: "column", gap: 8, borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 18 } },
-          h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(e.id), style: { position: "absolute", top: 12, right: 12, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 })),
-          h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-            React.createElement(BookOpen, { size: 17, color: tone }),
-            h("span", { style: { fontSize: 15, fontWeight: 600, color: theme.text } }, e.titel)
-          ),
-          h("p", { style: { fontSize: 13, color: theme.textMuted, margin: 0, whiteSpace: "pre-wrap" } }, e.inhalt.length > 90 ? e.inhalt.slice(0, 90) + "…" : e.inhalt)
-        );
-      })
-    )
+    entries.length === 0
+      ? h(EmptyState, { theme, icon: BookOpen, title: t("Noch keine Einträge."), hint: t("Lege oben eine erste Notiz an.") })
+      : h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 } },
+          entries.map((e, i) => {
+            const tone = toneByIndex(theme, i);
+            return h("div", { key: e.id, style: { position: "relative", display: "flex", flexDirection: "column", gap: 8, borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 18 } },
+              h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(e.id)), style: { position: "absolute", top: 12, right: 12, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 })),
+              h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                React.createElement(BookOpen, { size: 17, color: tone }),
+                h("span", { style: { fontSize: 15, fontWeight: 600, color: theme.text } }, e.titel)
+              ),
+              h("p", { style: { fontSize: 13, color: theme.textMuted, margin: 0, whiteSpace: "pre-wrap" } }, e.inhalt.length > 90 ? e.inhalt.slice(0, 90) + "…" : e.inhalt)
+            );
+          })
+        )
   );
 }
 
@@ -2086,7 +2225,7 @@ function RecipesModule({ theme, recipes, onAdd, onUpdate, onDelete, onAddIngredi
           ),
           h("div", { style: { display: "flex", gap: 6 } },
             h("button", { onClick: () => setEditingId(open.id), style: { fontSize: 12, color: theme.accent, background: "none", fontWeight: 600 } }, t("Bearbeiten")),
-            h("button", { onClick: () => { if (window.confirm(t("Rezept löschen?"))) { onDelete(open.id); setOpenId(null); } }, style: { fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+            h("button", { onClick: () => requestConfirm(t("Rezept löschen?"), () => { onDelete(open.id); setOpenId(null); }), style: { fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
           )
         ),
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px" } },
@@ -2112,7 +2251,7 @@ function RecipesModule({ theme, recipes, onAdd, onUpdate, onDelete, onAddIngredi
         style: { padding: "6px 14px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${filterKat === f.value ? theme.accent : theme.border}`, backgroundColor: filterKat === f.value ? hexA(theme.accent, 0.12) : "transparent", color: filterKat === f.value ? theme.accent : theme.textMuted },
       }, f.label))
     ),
-    filtered.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Noch keine Rezepte in dieser Kategorie.")),
+    filtered.length === 0 && h(EmptyState, { theme, icon: ChefHat, title: t("Noch keine Rezepte in dieser Kategorie.") }),
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 } },
       filtered.map((r, i) => {
         const tone = toneByIndex(theme, i);
@@ -2357,7 +2496,7 @@ function SubjectManager({ theme, subjects, onCreate, onDelete }) {
     h("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 } },
       subjects.map((s) => h("span", { key: s.id, style: { display: "flex", alignItems: "center", gap: 6, borderRadius: 999, backgroundColor: hexA(s.farbe, 0.15), color: s.farbe, padding: "5px 10px", fontSize: 12, fontWeight: 600 } },
         s.name,
-        h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(s.id), style: { color: s.farbe, background: "none", display: "flex" } }, React.createElement(X, { size: 11 }))
+        h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(s.id)), style: { color: s.farbe, background: "none", display: "flex" } }, React.createElement(X, { size: 11 }))
       ))
     ),
     h("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
@@ -2442,7 +2581,7 @@ function GradesView({ theme, childId, subjects, grades, onAdd, onDelete }) {
       h("input", { value: beschreibung, onChange: (e) => setBeschreibung(e.target.value), placeholder: t("Anlass (optional)"), style: { flex: 1, minWidth: 140, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, color: theme.text, fontSize: 13 } }),
       h("button", { onClick: submit, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, t("Speichern"))
     ),
-    Object.keys(byFach).length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Noch keine Noten erfasst.")),
+    Object.keys(byFach).length === 0 && h(EmptyState, { theme, icon: GraduationCap, title: t("Noch keine Noten erfasst.") }),
     h("div", { style: { display: "flex", flexDirection: "column", gap: 14 } },
       Object.entries(byFach).map(([sid, list]) => {
         const subject = subjectFor(sid);
@@ -2458,7 +2597,7 @@ function GradesView({ theme, childId, subjects, grades, onAdd, onDelete }) {
             list.map((g) => h("div", { key: g.id, style: { display: "flex", alignItems: "center", gap: 6, borderRadius: 8, backgroundColor: theme.surfaceAlt, padding: "6px 10px" } },
               h("span", { style: { fontSize: 14, fontWeight: 700, color: theme.text, fontVariantNumeric: "tabular-nums" } }, g.note),
               g.beschreibung && h("span", { style: { fontSize: 11, color: theme.textMuted } }, g.beschreibung),
-              h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(g.id), style: { color: theme.textMuted, background: "none", display: "flex" } }, React.createElement(X, { size: 11 }))
+              h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(g.id)), style: { color: theme.textMuted, background: "none", display: "flex" } }, React.createElement(X, { size: 11 }))
             ))
           )
         );
@@ -2491,7 +2630,7 @@ function ExamsView({ theme, childId, subjects, exams, onAdd, onDelete }) {
       h("input", { value: titel, onChange: (e) => setTitel(e.target.value), placeholder: t("Thema (optional)"), style: { flex: 1, minWidth: 140, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, color: theme.text, fontSize: 13 } }),
       h("button", { onClick: submit, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, t("Speichern"))
     ),
-    childExams.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Keine Klassenarbeiten eingetragen.")),
+    childExams.length === 0 && h(EmptyState, { theme, icon: GraduationCap, title: t("Keine Klassenarbeiten eingetragen.") }),
     h("ul", { style: { display: "flex", flexDirection: "column", gap: 8, listStyle: "none", margin: 0, padding: 0 } },
       childExams.map((e) => {
         const subject = subjectFor(e.subject_id);
@@ -2501,7 +2640,7 @@ function ExamsView({ theme, childId, subjects, exams, onAdd, onDelete }) {
             h("p", { style: { fontSize: 14, fontWeight: 500, color: theme.text, margin: 0 } }, `${subject?.name || "?"}${e.titel ? " — " + e.titel : ""}`),
             h("p", { style: { fontSize: 11, color: theme.textMuted, margin: 0 } }, new Date(e.datum).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "long" }))
           ),
-          h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(e), style: { color: theme.textMuted, background: "none", display: "flex" } }, React.createElement(X, { size: 14 }))
+          h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(e)), style: { color: theme.textMuted, background: "none", display: "flex" } }, React.createElement(X, { size: 14 }))
         );
       })
     )
@@ -2516,7 +2655,7 @@ function SchoolModule({ theme, kids, subjects, timetableEntries, grades, exams, 
   if (kids.length === 0) {
     return h("div", { style: { maxWidth: 800, margin: "0 auto", width: "100%" } },
       h(PageHead, { theme, title: t("Schule"), subtitle: t("Stundenplan, Noten und Klassenarbeiten.") }),
-      h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Noch keine Kinder angelegt — unter Einstellungen → Personen lässt sich das ergänzen."))
+      h(EmptyState, { theme, icon: GraduationCap, title: t("Noch keine Kinder angelegt"), hint: t("Unter Einstellungen → Personen lässt sich das ergänzen.") })
     );
   }
 
@@ -2686,13 +2825,13 @@ function HouseholdTaskCard({ theme, task, assigneeName, canToggle, done, onToggl
       h("button", {
         onClick: () => canToggle && onToggle(),
         disabled: !canToggle,
-        style: { width: 18, height: 18, flexShrink: 0, borderRadius: 6, border: `1px solid ${done ? theme.accent : theme.border}`, backgroundColor: done ? theme.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1, opacity: canToggle ? 1 : 0.5 },
+        style: { width: 18, height: 18, flexShrink: 0, borderRadius: 999, border: `1px solid ${done ? theme.accent : theme.border}`, backgroundColor: done ? theme.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1, opacity: canToggle ? 1 : 0.5 },
       }, done && React.createElement(Check, { size: 12, color: theme.accentForeground })),
       h("div", { style: { minWidth: 0, flex: 1 } },
         h("p", { style: { fontSize: 12, fontWeight: 600, color: theme.text, margin: 0, textDecoration: done ? "line-through" : "none" } }, task.titel),
         h("p", { style: { fontSize: 10, color: theme.textMuted, margin: "1px 0 0" } }, assigneeName)
       ),
-      canDelete && h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(), style: { flexShrink: 0, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 12 }))
+      canDelete && h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete()), style: { flexShrink: 0, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 12 }))
     )
   );
 }
@@ -3141,7 +3280,7 @@ function FinanceModule({ theme, entries, onAdd, onDelete, onUpdate, payeeCategor
         ),
         h("span", { style: { fontSize: 12, color: theme.textMuted } }, tf("{n} Buchung{s}", { n: filtered.length, s: filtered.length === 1 ? "" : "en", en_s: filtered.length === 1 ? "" : "s" }))
       ),
-      filtered.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Keine Buchungen in diesem Zeitraum.")),
+      filtered.length === 0 && h(EmptyState, { theme, icon: Wallet, title: t("Keine Buchungen in diesem Zeitraum.") }),
       h("ul", { style: { display: "flex", flexDirection: "column", listStyle: "none", margin: 0, padding: 0 } },
         visible.map((e, i) => h("li", { key: e.id, style: { padding: "10px 0", borderTop: i > 0 ? `1px solid ${theme.border}99` : "none" } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
@@ -3151,7 +3290,7 @@ function FinanceModule({ theme, entries, onAdd, onDelete, onUpdate, payeeCategor
               h("p", { style: { fontSize: 11, color: theme.textMuted, margin: 0 } }, e.datum && new Date(e.datum).toLocaleDateString(locale()))
             ),
             h("span", { style: { fontSize: 14, fontWeight: 600, color: Number(e.betrag) > 0 ? theme.eventGreen : theme.text, fontVariantNumeric: "tabular-nums", flexShrink: 0, textAlign: "right" } }, `${Number(e.betrag) > 0 ? "+" : ""}${Number(e.betrag).toFixed(2)} €`),
-            h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(e.id), style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+            h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(e.id)), style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
           ),
           h("div", { style: { marginTop: 6, marginLeft: 14, maxWidth: 200 } },
             h(CategorySelect, { theme, categories: financeCategories, value: e.kategorie, onChange: (v) => onUpdate(e.id, { kategorie: v }), onCreate: onCreateCategory })
@@ -3193,7 +3332,7 @@ function HealthModule({ theme, members, records, onAdd, onDelete }) {
       h("input", { value: notiz, onChange: (e) => setNotiz(e.target.value), placeholder: t("Notiz"), style: { backgroundColor: theme.surface, color: theme.text, flex: 1, minWidth: 140, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
       h("button", { onClick: submit, style: { padding: "9px 18px", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600, fontSize: 14 } }, t("Speichern"))
     ),
-    byMember.length === 0 && h("p", { style: { fontSize: 13, color: theme.textMuted } }, t("Noch keine Einträge.")),
+    byMember.length === 0 && h(EmptyState, { theme, icon: HeartPulse, title: t("Noch keine Einträge.") }),
     h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 } },
       byMember.map(({ member, records: recs }, i) => {
         const tone = toneByIndex(theme, i);
@@ -3211,7 +3350,7 @@ function HealthModule({ theme, members, records, onAdd, onDelete }) {
           h("div", { style: { marginTop: 14, display: "flex", flexDirection: "column", gap: 6 } },
             recs.map((r) => h("div", { key: r.id, style: { display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 10, backgroundColor: theme.surfaceAlt + "99", padding: "8px 12px" } },
               h("span", { style: { fontSize: 13, color: theme.text } }, `${gesundheitTypen()[r.typ]} – ${new Date(r.datum).toLocaleDateString(locale())}`),
-              h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(r.id), style: { fontSize: 11, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+              h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(r.id)), style: { fontSize: 11, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
             ))
           )
         );
@@ -3240,8 +3379,10 @@ function ContactsModule({ theme, contacts, onAdd, onDelete }) {
       h("input", { type: "date", value: geburtstag, onChange: (e) => setGeburtstag(e.target.value), title: t("Geburtstag (optional)"), style: { backgroundColor: theme.surface, color: theme.text, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
       h("button", { onClick: submit, style: { padding: "9px 18px", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontWeight: 600, fontSize: 14 } }, t("Speichern"))
     ),
-    h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 } },
-      contacts.map((c, i) => {
+    contacts.length === 0
+      ? h(EmptyState, { theme, icon: Contact, title: t("Noch keine Kontakte."), hint: t("Wichtige Nummern lassen sich oben hinzufügen.") })
+      : h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 } },
+          contacts.map((c, i) => {
         const tone = toneByIndex(theme, i);
         return h("div", { key: c.id, style: { display: "flex", alignItems: "center", gap: 14, borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 16 } },
           h("span", { style: { display: "flex", width: 48, height: 48, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: hexA(tone, 0.15), color: tone, fontSize: 16, fontWeight: 700 } }, c.name[0]),
@@ -3251,7 +3392,7 @@ function ContactsModule({ theme, contacts, onAdd, onDelete }) {
           ),
           h("div", { style: { display: "flex", gap: 6, flexShrink: 0 } },
             c.telefon && h("a", { href: `tel:${c.telefon.replace(/\s/g, "")}`, style: { display: "flex", width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 10, border: `1px solid ${theme.border}`, color: theme.textMuted } }, React.createElement(Phone, { size: 15 })),
-            h("button", { onClick: () => window.confirm(t("Wirklich löschen?")) && onDelete(c.id), style: { display: "flex", width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 10, border: `1px solid ${theme.border}`, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+            h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(c.id)), style: { display: "flex", width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 10, border: `1px solid ${theme.border}`, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
           )
         );
       })
@@ -3526,7 +3667,7 @@ function StatTiles({ theme, stats, onNavigate }) {
 }
 
 function TodayAppointments({ theme, appointments, members, onNavigate, title, emptyLabel, showDate }) {
-  return h("section", { style: { borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 20 } },
+  return h("section", { style: { borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" } },
     h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
       h("h3", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: theme.text, margin: 0 } },
         React.createElement(CalendarDays, { size: 18, color: theme.accent }), title || t("Heutige Termine")
@@ -3593,7 +3734,6 @@ function InfoCard({ theme, title, icon, onNavigate, navLabel, children, tone }) 
 function MyProfileSection({ theme, activeMember, onUpdateAvatar, onChangePassword, onUpdateProfile }) {
   const [pin, setPin] = useState("");
   const [pinBusy, setPinBusy] = useState(false);
-  const [pinMsg, setPinMsg] = useState(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const fileInput = useRef(null);
 
@@ -3601,7 +3741,6 @@ function MyProfileSection({ theme, activeMember, onUpdateAvatar, onChangePasswor
   const [farbe, setFarbe] = useState(activeMember.farbe);
   const [geburtstag, setGeburtstag] = useState(activeMember.geburtstag ? activeMember.geburtstag.slice(0, 10) : "");
   const [profileBusy, setProfileBusy] = useState(false);
-  const [profileMsg, setProfileMsg] = useState(null);
 
   const submitAvatar = async (file) => {
     if (!file) return;
@@ -3611,19 +3750,19 @@ function MyProfileSection({ theme, activeMember, onUpdateAvatar, onChangePasswor
   };
 
   const submitPin = async () => {
-    if (pin.length < 6) { setPinMsg({ ok: false, text: t("Mindestens 6 Zeichen.") }); return; }
-    setPinBusy(true); setPinMsg(null);
+    if (pin.length < 6) { showToast(t("Mindestens 6 Zeichen."), "error"); return; }
+    setPinBusy(true);
     const res = await onChangePassword(pin);
-    setPinMsg({ ok: res.ok, text: res.ok ? t("Gespeichert.") : (res.error || t("Fehler.")) });
+    showToast(res.ok ? t("Gespeichert.") : (res.error || t("Fehler.")), res.ok ? "success" : "error");
     if (res.ok) setPin("");
     setPinBusy(false);
   };
 
   const submitProfile = async () => {
     if (!name.trim()) return;
-    setProfileBusy(true); setProfileMsg(null);
+    setProfileBusy(true);
     const res = await onUpdateProfile({ name: name.trim(), farbe, geburtstag: geburtstag || null });
-    setProfileMsg(res.ok ? t("Gespeichert.") : (res.error || t("Fehler.")));
+    showToast(res.ok ? t("Gespeichert.") : (res.error || t("Fehler.")), res.ok ? "success" : "error");
     setProfileBusy(false);
   };
 
@@ -3645,15 +3784,13 @@ function MyProfileSection({ theme, activeMember, onUpdateAvatar, onChangePasswor
         FARBEN.map((f) => h("button", { key: f, onClick: () => setFarbe(f), style: { width: 24, height: 24, borderRadius: "50%", backgroundColor: f, outline: farbe === f ? "2px solid " + theme.text : "none", outlineOffset: 2 } }))
       ),
       h("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-        h("button", { onClick: submitProfile, disabled: profileBusy, style: { padding: "8px 14px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, profileBusy ? t("Speichert…") : t("Profil speichern")),
-        profileMsg && h("p", { style: { fontSize: 12, color: theme.textMuted, margin: 0 } }, profileMsg)
+        h("button", { onClick: submitProfile, disabled: profileBusy, style: { padding: "8px 14px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, profileBusy ? t("Speichert…") : t("Profil speichern"))
       )
     ),
     h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${theme.border}`, paddingTop: 12 } },
       h("input", { type: "password", value: pin, onChange: (e) => setPin(e.target.value), placeholder: t("Neues Passwort/PIN (mind. 6 Zeichen)"), style: { backgroundColor: theme.surface, color: theme.text, flex: 1, minWidth: 200, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
       h("button", { onClick: submitPin, disabled: pinBusy, style: { padding: "8px 14px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, pinBusy ? t("Speichert…") : t("Passwort ändern"))
-    ),
-    pinMsg && h("p", { style: { fontSize: 12, color: pinMsg.ok ? theme.textMuted : "#C4562A", margin: 0 } }, pinMsg.text)
+    )
   );
 }
 
@@ -3681,27 +3818,41 @@ function MemberPermissionsMatrix({ theme, members, rolePermissions, memberPermis
   const overrideFor = (bereich) => memberPermissions.find((p) => p.member_id === selectedId && p.bereich === bereich);
   const showNurEigene = (bereich) => ["aufgaben", "kalender", "einkauf", "erinnerungen", "rezepte", "finanzen", "haushaltsplan"].includes(bereich);
 
-  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-    h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 4px" } }, t("Rechte für einzelne Person")),
-    h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 12px" } }, t("\"Nur eigene\" bedeutet: darf nur eigene Einträge bearbeiten/löschen, nicht die anderer Personen. Ohne Übersteuerung gilt für Kinder ein sinnvoller Standard.")),
-    h("select", { value: selectedId, onChange: (e) => setSelectedId(e.target.value), style: { marginBottom: 12, padding: "7px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 13, backgroundColor: theme.surfaceAlt, color: theme.text } },
-      members.map((m) => h("option", { key: m.id, value: m.id }, `${m.name} (${m.rolle === "erwachsen" ? t("Elternteil") : t("Kind")})`))
+  return h("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
+    h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 16 } },
+      h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 4px" } }, t("Rechte für einzelne Person")),
+      h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 14px" } }, t("\"Nur eigene\" bedeutet: darf nur eigene Einträge bearbeiten/löschen, nicht die anderer Personen. Ohne Übersteuerung gilt für Kinder ein sinnvoller Standard.")),
+      h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+        members.map((m) => h("button", {
+          key: m.id, onClick: () => setSelectedId(m.id),
+          style: {
+            display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 6px", borderRadius: 999,
+            border: `1px solid ${selectedId === m.id ? theme.accent : theme.border}`,
+            backgroundColor: selectedId === m.id ? hexA(theme.accent, 0.12) : "transparent",
+          },
+        },
+          avatarUrl(m.avatar_pfad)
+            ? h("img", { src: avatarUrl(m.avatar_pfad), style: { width: 26, height: 26, borderRadius: "50%", objectFit: "cover" } })
+            : h("span", { style: { display: "flex", width: 26, height: 26, borderRadius: "50%", backgroundColor: m.farbe, color: "#fff", fontSize: 11, fontWeight: 700, alignItems: "center", justifyContent: "center" } }, m.name[0]),
+          h("span", { style: { fontSize: 13, fontWeight: 500, color: selectedId === m.id ? theme.accent : theme.text } }, m.name)
+        ))
+      )
     ),
-    h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 65px 75px 75px 55px", gap: 6, padding: "4px 4px", fontSize: 10, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase" } },
-        h("span", null, t("Bereich")), h("span", null, t("Sichtbar")), h("span", null, t("Bearbeiten")), h("span", null, t("Nur eigene")), h("span", null, "")
+    h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" } },
+      h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0,1fr) 56px 70px 70px 46px", gap: 6, alignItems: "center", padding: "10px 16px", backgroundColor: theme.surfaceAlt, fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" } },
+        h("span", null, t("Bereich")), h("span", { style: { textAlign: "center" } }, t("Sichtbar")), h("span", { style: { textAlign: "center" } }, t("Bearbeiten")), h("span", { style: { textAlign: "center" } }, t("Nur eigene")), h("span", null, "")
       ),
-      bereiche().map((b) => {
+      bereiche().map((b, i) => {
         const override = overrideFor(b.id);
         const eff = override || defaultFor(b.id);
-        return h("div", { key: b.id, style: { display: "grid", gridTemplateColumns: "1fr 65px 75px 75px 55px", gap: 6, alignItems: "center", padding: "6px 4px", borderTop: `1px solid ${theme.border}66` } },
-          h("span", { style: { fontSize: 13, color: theme.text } }, b.label, !override && h("span", { style: { fontSize: 10, color: theme.textMuted } }, " " + t("(Std.)"))),
-          h("input", { type: "checkbox", checked: eff.sichtbar, onChange: (e) => onUpdate(selectedId, b.id, { sichtbar: e.target.checked, bearbeiten: e.target.checked ? eff.bearbeiten : false, nur_eigene: eff.nur_eigene || false }) }),
-          h("input", { type: "checkbox", checked: eff.bearbeiten, disabled: !eff.sichtbar, onChange: (e) => onUpdate(selectedId, b.id, { sichtbar: eff.sichtbar, bearbeiten: e.target.checked, nur_eigene: eff.nur_eigene || false }) }),
-          showNurEigene(b.id)
+        return h("div", { key: b.id, style: { display: "grid", gridTemplateColumns: "minmax(0,1fr) 56px 70px 70px 46px", gap: 6, alignItems: "center", padding: "9px 16px", borderTop: i > 0 ? `1px solid ${theme.border}` : "none" } },
+          h("span", { style: { fontSize: 13, color: theme.text } }, b.label, !override && h("span", { style: { fontSize: 11, color: theme.textMuted } }, " " + t("(Std.)"))),
+          h("span", { style: { textAlign: "center" } }, h("input", { type: "checkbox", checked: eff.sichtbar, onChange: (e) => onUpdate(selectedId, b.id, { sichtbar: e.target.checked, bearbeiten: e.target.checked ? eff.bearbeiten : false, nur_eigene: eff.nur_eigene || false }) })),
+          h("span", { style: { textAlign: "center" } }, h("input", { type: "checkbox", checked: eff.bearbeiten, disabled: !eff.sichtbar, onChange: (e) => onUpdate(selectedId, b.id, { sichtbar: eff.sichtbar, bearbeiten: e.target.checked, nur_eigene: eff.nur_eigene || false }) })),
+          h("span", { style: { textAlign: "center" } }, showNurEigene(b.id)
             ? h("input", { type: "checkbox", checked: eff.nur_eigene || false, disabled: !eff.bearbeiten, onChange: (e) => onUpdate(selectedId, b.id, { sichtbar: eff.sichtbar, bearbeiten: eff.bearbeiten, nur_eigene: e.target.checked }) })
-            : h("span", null),
-          override ? h("button", { onClick: () => onReset(selectedId, b.id), style: { fontSize: 11, color: theme.accent, background: "none" } }, "Reset") : null
+            : null),
+          override ? h("button", { onClick: () => onReset(selectedId, b.id), style: { fontSize: 11, color: theme.accent, background: "none" } }, "Reset") : h("span", null)
         );
       })
     )
@@ -3711,37 +3862,35 @@ function MemberPermissionsMatrix({ theme, members, rolePermissions, memberPermis
 function PersonRow({ theme, member, isSelf, onDelete, onResetPassword }) {
   const [resetting, setResetting] = useState(false);
   const [newPin, setNewPin] = useState("");
-  const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const submitReset = async () => {
-    if (newPin.length < 6) { setMsg(t("Mindestens 6 Zeichen.")); return; }
-    setBusy(true); setMsg(null);
+    if (newPin.length < 6) { showToast(t("Mindestens 6 Zeichen."), "error"); return; }
+    setBusy(true);
     const res = await onResetPassword(member.id, newPin);
-    setMsg(res.ok ? t("Zurückgesetzt.") : (res.error || t("Fehler.")));
-    if (res.ok) { setNewPin(""); setTimeout(() => setResetting(false), 1200); }
+    showToast(res.ok ? t("Zurückgesetzt.") : (res.error || t("Fehler.")), res.ok ? "success" : "error");
+    if (res.ok) { setNewPin(""); setResetting(false); }
     setBusy(false);
   };
 
-  return h("div", { style: { borderRadius: 10, backgroundColor: theme.surfaceAlt, padding: "8px 10px" } },
-    h("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+  return h("div", { style: { borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 16 } },
+    h("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
       avatarUrl(member.avatar_pfad)
-        ? h("img", { src: avatarUrl(member.avatar_pfad), style: { width: 32, height: 32, borderRadius: "50%", objectFit: "cover" } })
-        : h("div", { style: { width: 32, height: 32, borderRadius: "50%", backgroundColor: member.farbe, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 600 } }, member.name[0]),
-      h("div", { style: { flex: 1 } },
-        h("p", { style: { margin: 0, fontSize: 14, color: theme.text } }, member.name),
-        h("p", { style: { margin: 0, fontSize: 11, color: theme.textMuted } }, [member.rolle === "erwachsen" ? t("Elternteil") : t("Kind"), member.geburtstag && new Date(member.geburtstag).toLocaleDateString(locale())].filter(Boolean).join(" · "))
+        ? h("img", { src: avatarUrl(member.avatar_pfad), style: { width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 } })
+        : h("div", { style: { width: 44, height: 44, flexShrink: 0, borderRadius: "50%", backgroundColor: member.farbe, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 700 } }, member.name[0]),
+      h("div", { style: { flex: 1, minWidth: 0 } },
+        h("p", { style: { margin: 0, fontSize: 15, fontWeight: 600, color: theme.text } }, member.name),
+        h("p", { style: { margin: 0, fontSize: 13, color: theme.textMuted } }, [member.rolle === "erwachsen" ? t("Elternteil") : t("Kind"), member.geburtstag && new Date(member.geburtstag).toLocaleDateString(locale())].filter(Boolean).join(" · "))
       ),
-      !isSelf && h("button", { onClick: () => setResetting((s) => !s), style: { fontSize: 12, color: theme.accent, background: "none" } }, t("PIN zurücksetzen")),
+      !isSelf && h("button", { onClick: () => setResetting((s) => !s), style: { flexShrink: 0, fontSize: 13, color: theme.accent, background: "none" } }, t("PIN zurücksetzen")),
       !isSelf && h("button", {
-        onClick: () => { if (window.confirm(tf("{name} wirklich entfernen?", { name: member.name }))) onDelete(member.id); },
-        style: { color: theme.textMuted, background: "none", fontSize: 13 },
+        onClick: () => requestConfirm(tf("{name} wirklich entfernen?", { name: member.name }), () => onDelete(member.id)),
+        style: { flexShrink: 0, display: "flex", width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 10, border: `1px solid ${theme.border}`, color: theme.textMuted, background: "none" },
       }, React.createElement(X, { size: 14 }))
     ),
-    resetting && h("div", { style: { display: "flex", gap: 6, marginTop: 8, alignItems: "center" } },
-      h("input", { type: "password", value: newPin, onChange: (e) => setNewPin(e.target.value), placeholder: t("Neues Passwort/PIN"), style: { backgroundColor: theme.surface, color: theme.text, flex: 1, padding: "6px 8px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 13 } }),
-      h("button", { onClick: submitReset, disabled: busy, style: { fontSize: 12, color: theme.accentForeground, background: theme.accent, borderRadius: 8, padding: "6px 10px", fontWeight: 600 } }, busy ? "…" : "OK"),
-      msg && h("span", { style: { fontSize: 11, color: theme.textMuted } }, msg)
+    resetting && h("div", { style: { display: "flex", gap: 6, marginTop: 12, alignItems: "center", borderTop: `1px solid ${theme.border}`, paddingTop: 12 } },
+      h("input", { type: "password", value: newPin, onChange: (e) => setNewPin(e.target.value), placeholder: t("Neues Passwort/PIN"), style: { backgroundColor: theme.surface, color: theme.text, flex: 1, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 13 } }),
+      h("button", { onClick: submitReset, disabled: busy, style: { fontSize: 12, color: theme.accentForeground, background: theme.accent, borderRadius: 8, padding: "8px 12px", fontWeight: 600 } }, busy ? "…" : "OK")
     )
   );
 }
@@ -3756,20 +3905,18 @@ function notifyBereiche() {
 
 function NotificationsSection({ theme, onEnablePush, onSendTestPush, notificationPreferences, onUpdatePreference }) {
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
   const [testBusy, setTestBusy] = useState(false);
-  const [testMsg, setTestMsg] = useState(null);
 
   const enable = async () => {
-    setBusy(true); setMsg(null);
+    setBusy(true);
     const res = await onEnablePush();
-    setMsg(res.ok ? t("Aktiviert — du bekommst jetzt Benachrichtigungen auf diesem Gerät.") : (res.error || t("Fehler.")));
+    showToast(res.ok ? t("Aktiviert — du bekommst jetzt Benachrichtigungen auf diesem Gerät.") : (res.error || t("Fehler.")), res.ok ? "success" : "error");
     setBusy(false);
   };
   const test = async () => {
-    setTestBusy(true); setTestMsg(null);
+    setTestBusy(true);
     const res = await onSendTestPush();
-    setTestMsg(res.ok ? tf("Gesendet an {n} Gerät{s}.", { n: res.sent, s: res.sent === 1 ? "" : "e", en_s: res.sent === 1 ? "" : "s" }) : (res.error || t("Fehler.")));
+    showToast(res.ok ? tf("Gesendet an {n} Gerät{s}.", { n: res.sent, s: res.sent === 1 ? "" : "e", en_s: res.sent === 1 ? "" : "s" }) : (res.error || t("Fehler.")), res.ok ? "success" : "error");
     setTestBusy(false);
   };
   const isEnabled = (bereich) => {
@@ -3777,26 +3924,23 @@ function NotificationsSection({ theme, onEnablePush, onSendTestPush, notificatio
     return pref ? pref.enabled : true;
   };
 
-  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-    h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Benachrichtigungen")),
-    h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } },
-      t("Für fällige Aufgaben/Erinnerungen und für Neues, das andere anlegen. Auf iPhone/iPad: erst \"Zum Home-Bildschirm\" hinzufügen und von dort öffnen (iOS 16.4 oder neuer nötig) — im normalen Safari-Tab funktioniert es nicht.")
-    ),
-    h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } },
-      h("button", { onClick: enable, disabled: busy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, busy ? t("Aktiviert…") : t("Aktivieren")),
-      h("button", { onClick: test, disabled: testBusy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, testBusy ? t("Sendet…") : t("Testbenachrichtigung senden"))
-    ),
-    msg && h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "8px 0 0" } }, msg),
-    testMsg && h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "4px 0 0" } }, testMsg),
-    h("div", { style: { marginTop: 14, borderTop: `1px solid ${theme.border}`, paddingTop: 12 } },
-      h("p", { style: { fontSize: 12, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Benachrichtigen, wenn andere Neues anlegen bei:")),
-      h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
-        notifyBereiche().map((b) => h("label", { key: b.id, style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: theme.text } },
-          h("input", { type: "checkbox", checked: isEnabled(b.id), onChange: (e) => onUpdatePreference(b.id, e.target.checked) }),
-          b.label
-        ))
+  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" } },
+    h("div", { style: { padding: "14px 16px" } },
+      h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Benachrichtigungen")),
+      h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } },
+        t("Für fällige Aufgaben/Erinnerungen und für Neues, das andere anlegen. Auf iPhone/iPad: erst \"Zum Home-Bildschirm\" hinzufügen und von dort öffnen (iOS 16.4 oder neuer nötig) — im normalen Safari-Tab funktioniert es nicht.")
+      ),
+      h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+        h("button", { onClick: enable, disabled: busy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, busy ? t("Aktiviert…") : t("Aktivieren")),
+        h("button", { onClick: test, disabled: testBusy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, testBusy ? t("Sendet…") : t("Testbenachrichtigung senden"))
       )
-    )
+    ),
+    h("div", { style: { borderTop: `1px solid ${theme.border}`, padding: "10px 16px" } },
+      h("p", { style: { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: theme.textMuted, margin: "4px 0 8px" } }, t("Benachrichtigen, wenn andere Neues anlegen bei:"))
+    ),
+    notifyBereiche().map((b, i) => h("div", { key: b.id, style: { borderTop: i > 0 ? `1px solid ${theme.border}` : "none" } },
+      h(SettingsRow, { theme, label: b.label, action: h(Switch, { theme, checked: isEnabled(b.id), onChange: (v) => onUpdatePreference(b.id, v) }) })
+    ))
   );
 }
 
@@ -3827,15 +3971,14 @@ function dashboardWidgets() {
 }
 
 function MyDashboardSection({ theme, isWidgetEnabled, onUpdate }) {
-  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-    h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 4px" } }, t("Was auf \"Mein Überblick\" angezeigt wird")),
-    h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 12px" } }, t("Betrifft nur deine eigene, persönliche Übersicht — nicht den Familien-Überblick.")),
-    h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
-      dashboardWidgets().map((w) => h("label", { key: w.id, style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: theme.text } },
-        h("input", { type: "checkbox", checked: isWidgetEnabled(w.id), onChange: (e) => onUpdate(w.id, e.target.checked) }),
-        w.label
-      ))
-    )
+  return h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" } },
+    h("div", { style: { padding: "14px 16px" } },
+      h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 4px" } }, t("Was auf \"Mein Überblick\" angezeigt wird")),
+      h("p", { style: { fontSize: 12, color: theme.textMuted, margin: 0 } }, t("Betrifft nur deine eigene, persönliche Übersicht — nicht den Familien-Überblick."))
+    ),
+    dashboardWidgets().map((w, i) => h("div", { key: w.id, style: { borderTop: `1px solid ${theme.border}` } },
+      h(SettingsRow, { theme, label: w.label, action: h(Switch, { theme, checked: isWidgetEnabled(w.id), onChange: (v) => onUpdate(w.id, v) }) })
+    ))
   );
 }
 
@@ -3848,17 +3991,17 @@ function SettingsModule({
 }) {
   const signOut = async () => { await supabase.auth.signOut(); };
   const [syncBusy, setSyncBusy] = useState(false);
-  const [syncMsg, setSyncMsg] = useState(null);
   const [exportBusy, setExportBusy] = useState(false);
   const [section, setSection] = useState("profil");
+  const [showAddMember, setShowAddMember] = useState(false);
 
   const visibleSections = settingsSections().filter((s) => s.always || canView(s.bereich));
   useEffect(() => { if (!visibleSections.find((s) => s.id === section)) setSection("profil"); }, [visibleSections, section]);
 
   const runSync = async () => {
-    setSyncBusy(true); setSyncMsg(null);
+    setSyncBusy(true);
     const res = await onSyncCaldav();
-    setSyncMsg(res.ok ? tf("Erledigt: {neu} neu, {akt} aktualisiert{del}{err} (Kalender \"{kal}\"{found}). {diag}{lastErr}{lastInsertErr}", {
+    const text = res.ok ? tf("Erledigt: {neu} neu, {akt} aktualisiert{del}{err} (Kalender \"{kal}\"{found}). {diag}{lastErr}{lastInsertErr}", {
       neu: res.neu, akt: res.aktualisiert, kal: res.kalender,
       del: res.geloescht ? tf(", {n} gelöscht", { n: res.geloescht }) : "",
       err: res.fehlerhaft ? tf(", {n} fehlerhaft", { n: res.fehlerhaft }) : "",
@@ -3867,12 +4010,14 @@ function SettingsModule({
       diag: res.diagnose || "",
       lastErr: res.letzterFehler ? " " + res.letzterFehler : "",
       lastInsertErr: res.letzterInsertFehler ? tf(" Insert-Fehler: {msg}", { msg: res.letzterInsertFehler }) : "",
-    }) : (res.error || t("Fehler.")));
+    }) : (res.error || t("Fehler."));
+    showToast(text, res.ok ? "success" : "error", 8000);
     setSyncBusy(false);
   };
   const runExport = async () => {
     setExportBusy(true);
     await onExportData();
+    showToast(t("Export gestartet — die Datei wird heruntergeladen."));
     setExportBusy(false);
   };
 
@@ -3889,53 +4034,58 @@ function SettingsModule({
 
     section === "mein_bereich" && h(MyDashboardSection, { theme, isWidgetEnabled, onUpdate: onUpdateDashboardPreference }),
 
-    section === "allgemein" && h("div", { style: { display: "flex", flexDirection: "column", gap: 20 } },
-      h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-        h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Darstellung")),
-        h("div", { style: { display: "flex", borderRadius: 10, border: `1px solid ${theme.border}`, padding: 3, width: "fit-content" } },
-          [["dunkel", t("Dunkel"), Moon], ["hell", t("Hell"), Sun]].map(([id, label, Icon]) => h("button", {
-            key: id, onClick: () => onSetTheme(id),
-            style: { display: "flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, backgroundColor: themeName === id ? theme.accent : "transparent", color: themeName === id ? theme.accentForeground : theme.textMuted },
-          }, React.createElement(Icon, { size: 14 }), label))
-        )
-      ),
-      h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-        h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Sprache")),
-        h("div", { style: { display: "flex", borderRadius: 10, border: `1px solid ${theme.border}`, padding: 3, width: "fit-content" } },
-          Object.entries(SPRACHEN).map(([id, s]) => h("button", {
-            key: id, onClick: () => onSetLang(id),
-            style: { display: "flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, backgroundColor: langName === id ? theme.accent : "transparent", color: langName === id ? theme.accentForeground : theme.textMuted },
-          }, s.label))
+    section === "allgemein" && h("div", { style: { display: "flex", flexDirection: "column", gap: 24 } },
+      h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" } },
+        h("div", { style: { padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } },
+          h("span", { style: { fontSize: 15, color: theme.text } }, t("Darstellung")),
+          h("div", { style: { display: "flex", borderRadius: 10, border: `1px solid ${theme.border}`, padding: 3, width: "fit-content" } },
+            [["dunkel", t("Dunkel"), Moon], ["hell", t("Hell"), Sun]].map(([id, label, Icon]) => h("button", {
+              key: id, onClick: () => onSetTheme(id),
+              style: { display: "flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, backgroundColor: themeName === id ? theme.accent : "transparent", color: themeName === id ? theme.accentForeground : theme.textMuted },
+            }, React.createElement(Icon, { size: 14 }), label))
+          )
+        ),
+        h("div", { style: { borderTop: `1px solid ${theme.border}`, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } },
+          h("span", { style: { fontSize: 15, color: theme.text } }, t("Sprache")),
+          h("div", { style: { display: "flex", borderRadius: 10, border: `1px solid ${theme.border}`, padding: 3, width: "fit-content" } },
+            Object.entries(SPRACHEN).map(([id, s]) => h("button", {
+              key: id, onClick: () => onSetLang(id),
+              style: { display: "flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, backgroundColor: langName === id ? theme.accent : "transparent", color: langName === id ? theme.accentForeground : theme.textMuted },
+            }, s.label))
+          )
         )
       ),
       h(NotificationsSection, { theme, onEnablePush, onSendTestPush, notificationPreferences, onUpdatePreference: onUpdateNotificationPreference }),
-      h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-        h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Sicherheit")),
-        h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Angemeldet als ") + activeMember.name + (activeMember.ist_master ? " (Master)" : "") + t(". Jede Person hat einen eigenen Zugang mit eigenen Rechten.")),
-        h("button", { onClick: signOut, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, t("Abmelden"))
-      ),
-      h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-        h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Datensicherung")),
-        h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Lädt alle Familiendaten als Datei herunter (Termine, Aufgaben, Dokumente-Liste usw. — die Dateien selbst, z. B. gescannte Dokumente, sind nicht enthalten).")),
-        h("button", { onClick: runExport, disabled: exportBusy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, exportBusy ? t("Exportiert…") : t("Daten exportieren"))
+      h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" } },
+        h("div", { style: { padding: "14px 16px" } },
+          h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Angemeldet als ") + activeMember.name + (activeMember.ist_master ? " (Master)" : "") + t(". Jede Person hat einen eigenen Zugang mit eigenen Rechten.")),
+          h("button", { onClick: signOut, style: { fontSize: 15, fontWeight: 500, color: theme.destructive, background: "none" } }, t("Abmelden"))
+        ),
+        h("div", { style: { borderTop: `1px solid ${theme.border}`, padding: "14px 16px" } },
+          h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Lädt alle Familiendaten als Datei herunter (Termine, Aufgaben, Dokumente-Liste usw. — die Dateien selbst, z. B. gescannte Dokumente, sind nicht enthalten).")),
+          h("button", { onClick: runExport, disabled: exportBusy, style: { fontSize: 15, fontWeight: 500, color: theme.accent, background: "none" } }, exportBusy ? t("Exportiert…") : t("Daten exportieren"))
+        )
       )
     ),
 
     section === "rechte" && h(MemberPermissionsMatrix, { theme, members, rolePermissions, memberPermissions, onUpdate: onUpdateMemberPermission, onReset: onResetMemberPermission }),
 
-    section === "personen" && h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
-      h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Personen")),
-      h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-        members.map((m) => h(PersonRow, { key: m.id, theme, member: m, isSelf: m.id === activeMember.id, onDelete: onDeleteMember, onResetPassword: onResetPassword })),
-        h(AddMemberForm, { theme, onAdd: onAddMember })
+    section === "personen" && h(React.Fragment, null,
+      h("div", { style: { display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 12 } },
+        h(AddButton, { theme, label: t("Person"), onClick: () => setShowAddMember(true) })
+      ),
+      h("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+        members.map((m) => h(PersonRow, { key: m.id, theme, member: m, isSelf: m.id === activeMember.id, onDelete: onDeleteMember, onResetPassword: onResetPassword }))
+      ),
+      showAddMember && h(Modal, { theme, title: t("Person hinzufügen"), onClose: () => setShowAddMember(false) },
+        h(AddMemberForm, { theme, onAdd: async (fields, file) => { const res = await onAddMember(fields, file); if (!res || !res.error) setShowAddMember(false); return res; } })
       )
     ),
 
     section === "verbindungen" && h("div", { style: { backgroundColor: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16 } },
       h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px" } }, t("Apple-Kalender-Sync")),
       h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Holt Termine aus dem gemeinsamen Apple-Kalender — erst nutzbar, wenn die caldav-sync-Function deployed und mit Apple-Zugangsdaten (Secrets) versehen ist.")),
-      h("button", { onClick: runSync, disabled: syncBusy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, syncBusy ? t("Synchronisiert…") : t("Jetzt synchronisieren")),
-      syncMsg && h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "8px 0 0" } }, syncMsg)
+      h("button", { onClick: runSync, disabled: syncBusy, style: { padding: "8px 16px", borderRadius: 8, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 } }, syncBusy ? t("Synchronisiert…") : t("Jetzt synchronisieren"))
     )
   );
 }
@@ -4072,8 +4222,9 @@ function App() {
   const isPhone = viewportWidth < 768;
 
   useEffect(() => {
-    document.documentElement.style.backgroundColor = THEMES.dunkel.sidebar;
-    document.body.style.backgroundColor = THEMES.dunkel.sidebar;
+    document.documentElement.style.backgroundColor = theme.sidebar;
+    document.body.style.backgroundColor = theme.sidebar;
+    document.documentElement.style.setProperty("--accent", theme.accent);
   }, [theme]);
 
   const [updateAvailable, setUpdateAvailable] = useState(!!window.__fzUpdateAvailable);
@@ -5124,7 +5275,7 @@ function App() {
             React.createElement(Sparkles, { size: 17, color: theme.accent })
           ),
           !compact && h("div", { style: { minWidth: 0 } },
-            h("h1", { style: { fontSize: 16, fontWeight: 700, color: theme.sidebarActiveForeground, fontFamily: "'Geist', sans-serif", margin: 0, whiteSpace: "nowrap" } }, "Familienzentrale"),
+            h("h1", { style: { fontSize: 16, fontWeight: 700, color: theme.sidebarActiveForeground, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif", margin: 0, whiteSpace: "nowrap" } }, "Familienzentrale"),
             h("p", { style: { fontSize: 11, color: theme.sidebarMuted, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, t("Angemeldet: ") + activeMember.name)
           )
         ),
@@ -5189,6 +5340,7 @@ function App() {
   );
 
   return h("div", { style: { height: "100%", display: "flex", backgroundColor: theme.bg, paddingTop: "env(safe-area-inset-top)" } },
+    h(ConfirmHost, { theme }),
     isDesktop && sidebarNode("full"),
     isTablet && sidebarNode("compact"),
     mobileNavOpen && h("div", { style: { position: "fixed", inset: 0, zIndex: 50, display: "flex", paddingTop: "env(safe-area-inset-top)" } },
@@ -5340,6 +5492,14 @@ function App() {
 }
 
 createRoot(document.getElementById("root")).render(h(App));
+
+// Separate, standalone React root for toasts: runs outside the App tree
+// so App re-renders/remounts (e.g. from realtime updates) can't reset the
+// toast state mid-display.
+const toastRootEl = document.createElement("div");
+toastRootEl.id = "toast-root";
+document.body.appendChild(toastRootEl);
+createRoot(toastRootEl).render(h(ToastHost));
 </script>
 </body>
 </html>
