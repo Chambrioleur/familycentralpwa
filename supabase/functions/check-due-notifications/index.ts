@@ -27,6 +27,25 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 }
 
+// Alerts every adult by push when this cron job (no signed-in user) fails —
+// otherwise nobody would notice until someone happens to check sync_log.
+async function notifyAdultsOnFailure(source: string, error: string) {
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-push`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Cron-Secret": Deno.env.get("CRON_SECRET") ?? "" },
+      body: JSON.stringify({
+        notify_all_adults: true,
+        title: "⚠️ Sync error",
+        body: `${source}: ${error.slice(0, 150)}`,
+      }),
+    });
+  } catch {
+    // Deliberately no further error path -- if the failure notification
+    // itself fails, there's nothing more useful to do here.
+  }
+}
+
 async function notifyMembers(memberIds: string[], payload: Record<string, unknown>) {
   let sent = 0;
   for (const memberId of memberIds) {
@@ -94,8 +113,16 @@ Deno.serve(async (req) => {
       await supabaseAdmin.from("reminders").update({ benachrichtigt_am: today }).eq("id", r.id);
     }
 
+    await supabaseAdmin.from("sync_log").insert({
+      tabelle: "tasks/reminders", richtung: "push", ergebnis: "erfolg",
+      details: `${(tasks?.length ?? 0) + (reminders?.length ?? 0)} checked, ${benachrichtigt} notified`,
+    });
     return json({ ok: true, geprueft: (tasks?.length ?? 0) + (reminders?.length ?? 0), benachrichtigt });
   } catch (err) {
+    await supabaseAdmin.from("sync_log").insert({
+      tabelle: "tasks/reminders", richtung: "push", ergebnis: "fehler", details: String(err),
+    });
+    await notifyAdultsOnFailure("check-due-notifications", String(err));
     return json({ error: String(err) }, 500);
   }
 });

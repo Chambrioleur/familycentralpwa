@@ -2,6 +2,12 @@
 //
 // Sends a push notification to all of a person's devices.
 // Without a member_id, it sends to the caller's own devices (test button).
+//
+// Can also be called with a cron secret (no signed-in user) using
+// { notify_all_adults: true, ... } — used by the other cron functions
+// (caldav-sync, check-due-notifications) to alert every adult when a
+// scheduled job actually fails. Without this, a silent cron failure
+// (expired app password, etc.) would otherwise go unnoticed.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
@@ -50,6 +56,24 @@ async function sendToMember(memberId: string, payload: Record<string, unknown>) 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const cronSecret = req.headers.get("X-Cron-Secret");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
+    const isCronCall = !!expectedCronSecret && cronSecret === expectedCronSecret;
+
+    const body = await req.json().catch(() => ({}));
+    const title = body.title || "Familienzentrale";
+    const message = body.body || "Test notification — looks good! 🎉";
+
+    if (isCronCall && body.notify_all_adults) {
+      const { data: adults } = await supabaseAdmin.from("members").select("id").eq("rolle", "erwachsen");
+      let sent = 0, removed = 0;
+      for (const adult of adults ?? []) {
+        const r = await sendToMember(adult.id, { title, body: message, url: "/" });
+        sent += r.sent; removed += r.removed;
+      }
+      return json({ ok: true, sent, removed });
+    }
+
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
     const { data: callerData, error: callerErr } = await supabaseAdmin.auth.getUser(token);
@@ -58,11 +82,7 @@ Deno.serve(async (req) => {
     const { data: caller } = await supabaseAdmin.from("members").select("id").eq("user_id", callerData.user.id).maybeSingle();
     if (!caller) return json({ error: "No profile found." }, 404);
 
-    const body = await req.json().catch(() => ({}));
     const memberId = body.member_id || caller.id;
-    const title = body.title || "Familienzentrale";
-    const message = body.body || "Test notification — looks good! 🎉";
-
     const result = await sendToMember(memberId, { title, body: message, url: "/" });
     return json({ ok: true, ...result });
   } catch (err) {

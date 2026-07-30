@@ -72,6 +72,25 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 }
 
+// Alerts every adult by push when this cron job (no signed-in user) fails —
+// otherwise nobody would notice until someone happens to check sync_log.
+async function notifyAdultsOnFailure(source: string, error: string) {
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-push`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Cron-Secret": Deno.env.get("CRON_SECRET") ?? "" },
+      body: JSON.stringify({
+        notify_all_adults: true,
+        title: "⚠️ Sync error",
+        body: `${source}: ${error.slice(0, 150)}`,
+      }),
+    });
+  } catch {
+    // Deliberately no further error path -- if the failure notification
+    // itself fails, there's nothing more useful to do here.
+  }
+}
+
 // ── ICS parsing (custom, locally tested) ───
 function unfoldICS(ics: string): string {
   return ics.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
@@ -311,6 +330,7 @@ Deno.serve(async (req) => {
     await supabase.from("sync_log").insert({
       tabelle: "calendar_events", richtung: "pull", ergebnis: "fehler", details: String(err),
     });
+    if (isCronCall) await notifyAdultsOnFailure("caldav-sync", String(err));
     return json({ ok: false, error: String(err) }, 500);
   }
 });
