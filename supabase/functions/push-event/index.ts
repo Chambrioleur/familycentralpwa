@@ -107,7 +107,8 @@ async function findCalendarHref(): Promise<{ origin: string; href: string }> {
       const resourcetype = extractTag(r, "resourcetype") || "";
       const isRealCalendar = /<(?:[a-zA-Z0-9]+:)?calendar(?=[\s\/>])[^>]*\/?>/i.test(resourcetype);
       const looksSpecial = href && /inbox|outbox|notification|dropbox|freebusy/i.test(href);
-      return { href, name: extractTag(r, "displayname"), isCollection: isRealCalendar && !looksSpecial };
+      const fallbackName = href ? decodeURIComponent(href.replace(/\/$/, "").split("/").pop() || "") : null;
+      return { href, name: extractTag(r, "displayname") || fallbackName, isCollection: isRealCalendar && !looksSpecial };
     })
     .filter((c) => c.href && c.isCollection && c.href !== calendarHome);
   if (candidates.length === 0) throw new Error("No calendars found in the account.");
