@@ -326,6 +326,17 @@ const TRANSLATIONS = {
     "Das Familien-Handbuch.": "The family handbook.",
     "Daten exportieren": "Export data",
     "Datensicherung": "Backup",
+    "Backup importieren": "Import backup",
+    "Stellt wieder her…": "Restoring…",
+    "Stellt eine zuvor exportierte Backup-Datei wieder her. Vorsicht: überschreibt bestehende Einträge mit gleicher ID.": "Restores a previously exported backup file. Careful: overwrites existing entries with the same ID.",
+    "Diese Datei ist kein gültiges Backup.": "This file isn't a valid backup.",
+    "Bestehende Einträge mit gleicher ID werden dabei auf den Stand des Backups zurückgesetzt. Das lässt sich nicht rückgängig machen. Fortfahren?": "Existing entries with the same ID will be reset to the backup's state. This can't be undone. Continue?",
+    "Wiederherstellen": "Restore",
+    "Backup wiederhergestellt.": "Backup restored.",
+    "Wiederhergestellt, aber mit Fehlern: {errors}": "Restored, but with errors: {errors}",
+    "Budget/Monat:": "Budget/month:",
+    "kein Limit": "no limit",
+    "Budget für {kategorie} überschritten: {spent} € von {limit} €": "Budget for {kategorie} exceeded: €{spent} of €{limit}",
     "Dein Name": "Your name",
     "Dessert": "Dessert",
     "Diese Liste löschen": "Delete this list",
@@ -2981,14 +2992,24 @@ function CategorySelect({ theme, categories, value, onChange, onCreate, style })
   );
 }
 
-function CategoryManagerPanel({ theme, categories, entries, onCreate, onRename, onDelete, onClose }) {
+function CategoryManagerPanel({ theme, categories, entries, onCreate, onRename, onDelete, onUpdateBudget, onClose }) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [transferTarget, setTransferTarget] = useState("");
+  const [budgetDrafts, setBudgetDrafts] = useState({});
 
   const countFor = (name) => entries.filter((e) => e.kategorie === name).length;
+
+  const submitBudget = (cat) => {
+    const raw = budgetDrafts[cat.id];
+    if (raw === undefined) return;
+    const trimmed = raw.trim();
+    const value = trimmed === "" ? null : parseFloat(trimmed.replace(",", "."));
+    onUpdateBudget(cat.id, Number.isFinite(value) ? value : null);
+    setBudgetDrafts((d) => { const next = { ...d }; delete next[cat.id]; return next; });
+  };
 
   const submitNew = async () => {
     const name = newName.trim();
@@ -3036,6 +3057,19 @@ function CategoryManagerPanel({ theme, categories, entries, onCreate, onRename, 
               ? h("button", { onClick: () => submitRename(cat), style: { fontSize: 11, fontWeight: 600, color: theme.accentForeground, backgroundColor: theme.accent, borderRadius: 6, padding: "4px 10px" } }, "OK")
               : h("button", { onClick: () => { setEditingId(cat.id); setEditName(cat.name); setDeletingId(null); }, style: { fontSize: 12, color: theme.textMuted, background: "none" } }, t("Umbenennen")),
             h("button", { onClick: () => { setDeletingId(isDeleting ? null : cat.id); setEditingId(null); setTransferTarget(""); }, style: { color: theme.textMuted, background: "none", display: "flex" } }, React.createElement(X, { size: 14 }))
+          ),
+          h("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingLeft: 16 } },
+            h("span", { style: { fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap" } }, t("Budget/Monat:")),
+            h("input", {
+              type: "text", inputMode: "decimal",
+              value: budgetDrafts[cat.id] !== undefined ? budgetDrafts[cat.id] : (cat.budget_limit != null ? String(cat.budget_limit) : ""),
+              placeholder: t("kein Limit"),
+              onChange: (e) => setBudgetDrafts((d) => ({ ...d, [cat.id]: e.target.value })),
+              onBlur: () => submitBudget(cat),
+              onKeyDown: (e) => e.key === "Enter" && submitBudget(cat),
+              style: { width: 90, padding: "4px 8px", borderRadius: 6, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, color: theme.text, fontSize: 12 },
+            }),
+            h("span", { style: { fontSize: 11, color: theme.textMuted } }, "€")
           ),
           isDeleting && h("div", { style: { marginTop: 8, paddingTop: 8, borderTop: `1px solid ${theme.border}66`, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 } },
             count > 0
@@ -3179,7 +3213,7 @@ function CSVImportPanel({ theme, entries, payeeCategories, financeCategories, on
   );
 }
 
-function FinanceModule({ theme, entries, onAdd, onDelete, onUpdate, payeeCategories, financeCategories, onCreateCategory, onRenameCategory, onDeleteCategory, onImport }) {
+function FinanceModule({ theme, entries, onAdd, onDelete, onUpdate, payeeCategories, financeCategories, onCreateCategory, onRenameCategory, onDeleteCategory, onUpdateCategoryBudget, onImport }) {
   const [betrag, setBetrag] = useState("");
   const [kategorie, setKategorie] = useState("");
   const [notiz, setNotiz] = useState("");
@@ -3214,6 +3248,19 @@ function FinanceModule({ theme, entries, onAdd, onDelete, onUpdate, payeeCategor
     if (!num) return;
     await onAdd({ betrag: num, kategorie, notiz: notiz || null });
     setBetrag(""); setNotiz(""); setShowForm(false);
+
+    const cat = financeCategories.find((c) => c.name === kategorie);
+    if (cat?.budget_limit) {
+      const heute = new Date();
+      const curStart = isoDate(new Date(heute.getFullYear(), heute.getMonth(), 1));
+      const curEnd = isoDate(new Date(heute.getFullYear(), heute.getMonth() + 1, 0));
+      const spent = entries
+        .filter((e) => e.kategorie === kategorie && Number(e.betrag) < 0 && e.datum >= curStart && e.datum <= curEnd)
+        .reduce((s, e) => s + Math.abs(Number(e.betrag)), 0) + Math.max(0, -num);
+      if (spent > Number(cat.budget_limit)) {
+        showToast(tf("Budget für {kategorie} überschritten: {spent} € von {limit} €", { kategorie, spent: spent.toFixed(2), limit: Number(cat.budget_limit).toFixed(2) }), "error", 6000);
+      }
+    }
   };
 
   const einnahmen = filtered.filter((e) => Number(e.betrag) > 0).reduce((s, e) => s + Number(e.betrag), 0);
@@ -3239,7 +3286,7 @@ function FinanceModule({ theme, entries, onAdd, onDelete, onUpdate, payeeCategor
         h(AddButton, { theme, label: t("Buchung"), onClick: () => setShowForm((s) => !s) }),
       ),
     }),
-    showCategories && h(CategoryManagerPanel, { theme, categories: financeCategories, entries, onCreate: onCreateCategory, onRename: onRenameCategory, onDelete: onDeleteCategory, onClose: () => setShowCategories(false) }),
+    showCategories && h(CategoryManagerPanel, { theme, categories: financeCategories, entries, onCreate: onCreateCategory, onRename: onRenameCategory, onDelete: onDeleteCategory, onUpdateBudget: onUpdateCategoryBudget, onClose: () => setShowCategories(false) }),
     showImport && h(CSVImportPanel, { theme, entries, payeeCategories, financeCategories, onCreateCategory, onImport, onClose: () => setShowImport(false) }),
     showForm && h("div", { style: { marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" } },
       h("input", { value: betrag, onChange: (e) => setBetrag(e.target.value), placeholder: t("Betrag (+/- €)"), style: { backgroundColor: theme.surface, color: theme.text, width: 130, padding: "9px 12px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } }),
@@ -4012,7 +4059,7 @@ function MyDashboardSection({ theme, isWidgetEnabled, onUpdate }) {
 
 function SettingsModule({
   theme, activeMember, members, onAddMember, onDeleteMember, onUpdateAvatar, onChangePassword, onUpdateProfile,
-  onSyncCaldav, onExportData, rolePermissions, onResetPassword, onEnablePush, onSendTestPush,
+  onSyncCaldav, onExportData, onImportData, rolePermissions, onResetPassword, onEnablePush, onSendTestPush,
   memberPermissions, onUpdateMemberPermission, onResetMemberPermission,
   notificationPreferences, onUpdateNotificationPreference, canView,
   themeName, onSetTheme, langName, onSetLang, isWidgetEnabled, onUpdateDashboardPreference,
@@ -4020,6 +4067,8 @@ function SettingsModule({
   const signOut = async () => { await supabase.auth.signOut(); };
   const [syncBusy, setSyncBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const importFileInput = useRef(null);
   const [section, setSection] = useState("profil");
   const [showAddMember, setShowAddMember] = useState(false);
 
@@ -4047,6 +4096,30 @@ function SettingsModule({
     await onExportData();
     showToast(t("Export gestartet — die Datei wird heruntergeladen."));
     setExportBusy(false);
+  };
+  const runImport = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let dump;
+      try { dump = JSON.parse(reader.result); }
+      catch { showToast(t("Diese Datei ist kein gültiges Backup."), "error"); return; }
+      requestConfirm(
+        t("Bestehende Einträge mit gleicher ID werden dabei auf den Stand des Backups zurückgesetzt. Das lässt sich nicht rückgängig machen. Fortfahren?"),
+        async () => {
+          setImportBusy(true);
+          const errors = await onImportData(dump);
+          setImportBusy(false);
+          showToast(
+            errors.length === 0 ? t("Backup wiederhergestellt.") : tf("Wiederhergestellt, aber mit Fehlern: {errors}", { errors: errors.join("; ") }),
+            errors.length === 0 ? "success" : "error",
+            errors.length === 0 ? 3800 : 8000
+          );
+        },
+        { confirmLabel: t("Wiederherstellen") }
+      );
+    };
+    reader.readAsText(file);
   };
 
   return h("div", { style: { maxWidth: 720, margin: "0 auto", width: "100%" } },
@@ -4092,6 +4165,11 @@ function SettingsModule({
         h("div", { style: { borderTop: `1px solid ${theme.border}`, padding: "14px 16px" } },
           h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Lädt alle Familiendaten als Datei herunter (Termine, Aufgaben, Dokumente-Liste usw. — die Dateien selbst, z. B. gescannte Dokumente, sind nicht enthalten).")),
           h("button", { onClick: runExport, disabled: exportBusy, style: { fontSize: 15, fontWeight: 500, color: theme.accent, background: "none" } }, exportBusy ? t("Exportiert…") : t("Daten exportieren"))
+        ),
+        h("div", { style: { borderTop: `1px solid ${theme.border}`, padding: "14px 16px" } },
+          h("p", { style: { fontSize: 12, color: theme.textMuted, margin: "0 0 10px" } }, t("Stellt eine zuvor exportierte Backup-Datei wieder her. Vorsicht: überschreibt bestehende Einträge mit gleicher ID.")),
+          h("input", { ref: importFileInput, type: "file", accept: "application/json", style: { display: "none" }, onChange: (e) => { runImport(e.target.files[0]); e.target.value = ""; } }),
+          h("button", { onClick: () => importFileInput.current?.click(), disabled: importBusy, style: { fontSize: 15, fontWeight: 500, color: theme.accent, background: "none" } }, importBusy ? t("Stellt wieder her…") : t("Backup importieren"))
         )
       )
     ),
@@ -4463,10 +4541,11 @@ function App() {
     return { ok: true };
   }, [loadMembers, session]);
 
+  const BACKUP_TABLES = ["members", "calendar_events", "tasks", "reminders", "shopping_items", "documents", "wiki_entries", "finance_entries", "health_records", "contacts", "votes", "vote_options", "vote_responses"];
+
   const exportData = useCallback(async () => {
-    const tables = ["members", "calendar_events", "tasks", "reminders", "shopping_items", "documents", "wiki_entries", "finance_entries", "health_records", "contacts", "votes", "vote_options", "vote_responses"];
     const dump = {};
-    for (const table of tables) {
+    for (const table of BACKUP_TABLES) {
       const { data, error } = await supabase.from(table).select("*");
       if (error) { setBanner(tf("Export-Fehler bei {table}: {msg}", { table, msg: error.message })); return; }
       dump[table] = data;
@@ -4477,6 +4556,17 @@ function App() {
     a.href = url; a.download = `familienzentrale-backup-${isoDate(new Date())}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }, []);
+
+  const importData = useCallback(async (dump) => {
+    const errors = [];
+    for (const table of BACKUP_TABLES) {
+      const rows = dump[table];
+      if (!Array.isArray(rows) || rows.length === 0) continue;
+      const { error } = await supabase.from(table).upsert(rows, { onConflict: "id" });
+      if (error) errors.push(`${table}: ${error.message}`);
+    }
+    return errors;
   }, []);
 
   const enablePush = useCallback(async () => {
@@ -5092,6 +5182,12 @@ function App() {
     return { ok: true };
   }, [loadFinanceCategories, loadFinance, loadPayeeCategories]);
 
+  const updateFinanceCategoryBudget = useCallback(async (id, budgetLimit) => {
+    const { error } = await supabase.from("finance_categories").update({ budget_limit: budgetLimit }).eq("id", id);
+    if (error) { showToast(error.message, "error"); return; }
+    loadFinanceCategories();
+  }, [loadFinanceCategories]);
+
   const deleteFinanceCategory = useCallback(async (id, name, targetName) => {
     if (targetName) {
       await supabase.from("finance_entries").update({ kategorie: targetName }).eq("kategorie", name);
@@ -5494,7 +5590,7 @@ function App() {
               suggestions: householdSuggestions, onSaveSuggestion: createHouseholdSuggestion, onDeleteSuggestion: deleteHouseholdSuggestion,
             })
           : activeTab === "finanzen"
-          ? h(FinanceModule, { theme, entries: financeEntries, onAdd: addFinanceEntry, onDelete: deleteFinanceEntry, onUpdate: updateFinanceEntry, payeeCategories, financeCategories, onCreateCategory: createFinanceCategory, onRenameCategory: renameFinanceCategory, onDeleteCategory: deleteFinanceCategory, onImport: importFinanceRows })
+          ? h(FinanceModule, { theme, entries: financeEntries, onAdd: addFinanceEntry, onDelete: deleteFinanceEntry, onUpdate: updateFinanceEntry, payeeCategories, financeCategories, onCreateCategory: createFinanceCategory, onRenameCategory: renameFinanceCategory, onDeleteCategory: deleteFinanceCategory, onUpdateCategoryBudget: updateFinanceCategoryBudget, onImport: importFinanceRows })
           : activeTab === "gesundheit"
           ? h(HealthModule, { theme, members, records: healthRecords, onAdd: addHealthRecord, onDelete: deleteHealthRecord })
           : activeTab === "kontakte"
@@ -5505,7 +5601,7 @@ function App() {
           ? h(SettingsModule, {
               theme, activeMember, members, onAddMember: createMember, onDeleteMember: deleteMember,
               onUpdateAvatar: updateOwnAvatar, onChangePassword: changePassword, onUpdateProfile: updateOwnProfile,
-              onSyncCaldav: triggerCaldavSync, onExportData: exportData,
+              onSyncCaldav: triggerCaldavSync, onExportData: exportData, onImportData: importData,
               rolePermissions, onResetPassword: resetMemberPassword,
               onEnablePush: enablePush, onSendTestPush: sendTestPush,
               memberPermissions, onUpdateMemberPermission: updateMemberPermission, onResetMemberPermission: resetMemberPermission,
