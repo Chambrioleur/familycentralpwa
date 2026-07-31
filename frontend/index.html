@@ -80,9 +80,12 @@
       window.dispatchEvent(new CustomEvent("fz-update-available"));
     }
 
-    // 1) Falls bereits ein Service Worker registriert ist (z. B. durch
-    //    aktivierte Push-Benachrichtigungen): auf neue Version prüfen.
+    // 1) Service Worker registrieren, unabhängig von Push-Benachrichtigungen —
+    //    er übernimmt jetzt auch das Cachen der CDN-Bibliotheken (React,
+    //    Supabase-JS, lucide-react), das soll für alle greifen, nicht nur
+    //    für Leute, die Push aktiviert haben. Danach auf neue Version prüfen.
     if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js");
       navigator.serviceWorker.getRegistrations().then(function (regs) {
         regs.forEach(function (reg) {
           reg.update();
@@ -126,7 +129,7 @@
     "react": "https://esm.sh/react@18.3.1",
     "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
     "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.111.0",
     "lucide-react": "https://esm.sh/lucide-react@0.383.0?external=react"
   }
 }
@@ -893,6 +896,31 @@ function avatarUrl(path) {
   return path ? `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}` : null;
 }
 
+// Resizes an image in the browser (Canvas) before upload, instead of e.g.
+// uploading an unmodified multi-MB iPhone photo — that would otherwise
+// slow down every load of the profile picture. Non-image files (or
+// browsers without Canvas support) are passed through unchanged.
+async function resizeImageFile(file, maxDimension, quality) {
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    if (scale >= 1) { bitmap.close?.(); return file; }
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality || 0.85));
+    if (!blob) return file;
+    const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 function BootstrapForm({ theme, onCreate }) {
   const [name, setName] = useState("");
   const [farbe, setFarbe] = useState(FARBEN[0]);
@@ -963,7 +991,7 @@ function PersonLogin({ theme, onBootstrapCreate }) {
   if (selected) {
     return h("div", { style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: theme.bg, gap: 14 } },
       avatarUrl(selected.avatar_pfad)
-        ? h("img", { src: avatarUrl(selected.avatar_pfad), style: { width: 64, height: 64, borderRadius: "50%", objectFit: "cover" } })
+        ? h("img", { src: avatarUrl(selected.avatar_pfad), loading: "lazy", style: { width: 64, height: 64, borderRadius: "50%", objectFit: "cover" } })
         : h("div", { style: { width: 64, height: 64, borderRadius: "50%", backgroundColor: selected.farbe, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 600 } }, selected.name[0]),
       h("p", { style: { fontSize: 18, fontWeight: 600, color: theme.text, margin: 0 } }, selected.name),
       h("input", {
@@ -988,7 +1016,7 @@ function PersonLogin({ theme, onBootstrapCreate }) {
         style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 20, borderRadius: 16, backgroundColor: theme.surface, border: `1px solid ${theme.border}` },
       },
         avatarUrl(m.avatar_pfad)
-          ? h("img", { src: avatarUrl(m.avatar_pfad), style: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" } })
+          ? h("img", { src: avatarUrl(m.avatar_pfad), loading: "lazy", style: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" } })
           : h("div", { style: { width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 600, fontSize: 18, backgroundColor: m.farbe } }, m.name[0]),
         h("span", { style: { fontSize: 14, fontWeight: 500, color: theme.text } }, m.name)
       ))
@@ -3770,7 +3798,7 @@ function MyProfileSection({ theme, activeMember, onUpdateAvatar, onChangePasswor
     h("p", { style: { fontSize: 13, fontWeight: 600, color: theme.text, margin: 0 } }, t("Mein Profil")),
     h("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
       avatarUrl(activeMember.avatar_pfad)
-        ? h("img", { src: avatarUrl(activeMember.avatar_pfad), style: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" } })
+        ? h("img", { src: avatarUrl(activeMember.avatar_pfad), loading: "lazy", style: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" } })
         : h("div", { style: { width: 48, height: 48, borderRadius: "50%", backgroundColor: activeMember.farbe, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 600 } }, activeMember.name[0]),
       h("input", { ref: fileInput, type: "file", accept: "image/*", style: { display: "none" }, onChange: (e) => submitAvatar(e.target.files[0]) }),
       h("button", { onClick: () => fileInput.current?.click(), disabled: avatarBusy, style: { padding: "8px 14px", borderRadius: 8, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, avatarBusy ? t("Lädt hoch…") : [React.createElement(Camera, { key: "i", size: 15 }), " " + t("Profilbild ändern")])
@@ -3832,7 +3860,7 @@ function MemberPermissionsMatrix({ theme, members, rolePermissions, memberPermis
           },
         },
           avatarUrl(m.avatar_pfad)
-            ? h("img", { src: avatarUrl(m.avatar_pfad), style: { width: 26, height: 26, borderRadius: "50%", objectFit: "cover" } })
+            ? h("img", { src: avatarUrl(m.avatar_pfad), loading: "lazy", style: { width: 26, height: 26, borderRadius: "50%", objectFit: "cover" } })
             : h("span", { style: { display: "flex", width: 26, height: 26, borderRadius: "50%", backgroundColor: m.farbe, color: "#fff", fontSize: 11, fontWeight: 700, alignItems: "center", justifyContent: "center" } }, m.name[0]),
           h("span", { style: { fontSize: 13, fontWeight: 500, color: selectedId === m.id ? theme.accent : theme.text } }, m.name)
         ))
@@ -3876,7 +3904,7 @@ function PersonRow({ theme, member, isSelf, onDelete, onResetPassword }) {
   return h("div", { style: { borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 16 } },
     h("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
       avatarUrl(member.avatar_pfad)
-        ? h("img", { src: avatarUrl(member.avatar_pfad), style: { width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 } })
+        ? h("img", { src: avatarUrl(member.avatar_pfad), loading: "lazy", style: { width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 } })
         : h("div", { style: { width: 44, height: 44, flexShrink: 0, borderRadius: "50%", backgroundColor: member.farbe, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 700 } }, member.name[0]),
       h("div", { style: { flex: 1, minWidth: 0 } },
         h("p", { style: { margin: 0, fontSize: 15, fontWeight: 600, color: theme.text } }, member.name),
@@ -4326,8 +4354,9 @@ function App() {
     }
     if (!res.ok) { setBanner(data.error || t("Anlegen fehlgeschlagen.")); return { ok: false, error: data.error }; }
     if (avatarFile && data.member) {
-      const path = `${data.member.id}/${crypto.randomUUID()}-${avatarFile.name}`;
-      const { error: upErr } = await supabase.storage.from("avatars").upload(path, avatarFile);
+      const resized = await resizeImageFile(avatarFile, 400, 0.85);
+      const path = `${data.member.id}/${crypto.randomUUID()}-${resized.name}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, resized);
       if (!upErr) await supabase.from("members").update({ avatar_pfad: path }).eq("id", data.member.id);
     }
     loadMembers();
@@ -4411,8 +4440,9 @@ function App() {
 
   const updateOwnAvatar = useCallback(async (file) => {
     if (!session) return;
-    const path = `${activeMember.id}/${crypto.randomUUID()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file);
+    const resized = await resizeImageFile(file, 400, 0.85);
+    const path = `${activeMember.id}/${crypto.randomUUID()}-${resized.name}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, resized);
     if (upErr) { setBanner(upErr.message); return; }
     const { error } = await supabase.from("members").update({ avatar_pfad: path }).eq("user_id", session.user.id);
     if (error) setBanner(error.message);
@@ -5491,7 +5521,44 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(h(App));
+// Catches rendering errors anywhere in the tree that would otherwise
+// unmount the whole React tree (a blank page with no explanation — the
+// exact symptom the broken service-worker cache caused). Shows a
+// "reload" hint instead. Colours are deliberately hard-coded (no theme
+// object available here, since the error may have happened somewhere
+// below the theme context) — matches the app's default (dark theme) so
+// it doesn't look like a style break.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error("Unexpected error:", error, info);
+  }
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return h("div", {
+      style: {
+        minHeight: "100vh", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
+        justifyContent: "center", backgroundColor: "#000000", color: "#ffffff", padding: 24, textAlign: "center",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+      },
+    },
+      h("p", { style: { fontSize: 17, fontWeight: 600, margin: 0 } }, "Etwas ist schiefgelaufen."),
+      h("p", { style: { fontSize: 14, color: "#98989d", margin: 0, maxWidth: 320 } }, "Bitte lade die Seite neu. Falls es weiter passiert, sag kurz Bescheid."),
+      h("button", {
+        onClick: () => window.location.reload(),
+        style: { padding: "10px 20px", borderRadius: 10, backgroundColor: "#5ac8db", color: "#04211d", fontWeight: 600, fontSize: 14 },
+      }, "Neu laden")
+    );
+  }
+}
+
+createRoot(document.getElementById("root")).render(h(ErrorBoundary, null, h(App)));
 
 // Separate, standalone React root for toasts: runs outside the App tree
 // so App re-renders/remounts (e.g. from realtime updates) can't reset the
