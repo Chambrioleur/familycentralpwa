@@ -2121,8 +2121,35 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
           ),
           visibleDays.map(({ date, index }) => {
             const dayEvents = visibleEvents.filter((e) => sameDay(e.start, date) && !isSpanningEvent(e));
+            // Mehrtägige Termine mit Uhrzeit laufen wie in Apple als
+            // durchgehender Balken quer über die Tagesspalten — pro Tag
+            // ein Segment, das an den Rändern nur am tatsächlichen
+            // Start-/End-Tag Platz für die Uhrzeit lässt.
+            const spanningTimed = visibleEvents.filter((e) => !e.ganztaegig && !sameDay(e.start, e.end) && eventCoversDay(e, date));
             return h("div", { key: index, style: { position: "relative", borderRight: `1px solid ${theme.border}`, height: gridHeight } },
               HOURS.slice(0, -1).map((hr, i) => h("div", { key: hr, style: { position: "absolute", left: 0, right: 0, top: i * HOUR_HEIGHT, borderTop: `1px solid ${theme.border}80` } })),
+              spanningTimed.map((e) => {
+                const isStartDay = sameDay(e.start, date);
+                const isEndDay = sameDay(e.end, date);
+                const startH = isStartDay ? e.start.getHours() + e.start.getMinutes() / 60 : DAY_START;
+                const endH = isEndDay ? e.end.getHours() + e.end.getMinutes() / 60 : DAY_END;
+                const top = Math.max(0, (startH - DAY_START) * HOUR_HEIGHT);
+                const height = Math.max(20, (endH - startH) * HOUR_HEIGHT);
+                const color = memberColor(e.member_id);
+                return h("button", {
+                  key: e.occurrenceKey,
+                  onClick: () => openEvent(e),
+                  style: {
+                    position: "absolute", left: 0, right: 0, top, height,
+                    borderTopLeftRadius: isStartDay ? 8 : 0, borderTopRightRadius: isStartDay ? 8 : 0,
+                    borderBottomLeftRadius: isEndDay ? 8 : 0, borderBottomRightRadius: isEndDay ? 8 : 0,
+                    backgroundColor: hexA(color, 0.28), padding: "4px 8px", textAlign: "left", overflow: "hidden",
+                  },
+                },
+                  isStartDay && h("span", { style: { display: "block", fontSize: 12, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, e.titel),
+                  isStartDay && h("span", { style: { display: "block", fontSize: 10, color: theme.textMuted, fontVariantNumeric: "tabular-nums" } }, formatHour(startH))
+                );
+              }),
               dayEvents.map((e) => {
                 const startH = e.start.getHours() + e.start.getMinutes() / 60;
                 const endH = e.end.getHours() + e.end.getMinutes() / 60;
@@ -2176,7 +2203,7 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
 
     mode !== "monat" && (() => {
       const seen = new Set();
-      const allDayEvents = visibleDays.flatMap(({ date }) => visibleEvents.filter((e) => isSpanningEvent(e) && eventCoversDay(e, date)))
+      const allDayEvents = visibleDays.flatMap(({ date }) => visibleEvents.filter((e) => e.ganztaegig && eventCoversDay(e, date)))
         .filter((e) => (seen.has(e.occurrenceKey) ? false : (seen.add(e.occurrenceKey), true)));
       const fmtDay = (d) => d.toLocaleDateString(locale(), { day: "numeric", month: "numeric" });
       return allDayEvents.length > 0 && h("div", { style: { marginTop: 12, display: "flex", flexDirection: "column", gap: 6 } },
@@ -2184,9 +2211,8 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
           key: e.occurrenceKey, onClick: () => openEvent(e),
           style: { cursor: "pointer", borderRadius: 8, borderLeft: `3px solid ${memberColor(e.member_id)}`, backgroundColor: theme.surfaceAlt, padding: "6px 10px", fontSize: 13, color: theme.text },
         },
-          e.ganztaegig ? tf("Ganztägig: {titel}", { titel: e.titel }) : e.titel,
-          e.ganztaegig && !sameDay(e.start, e.end) && h("span", { style: { color: theme.textMuted, fontSize: 11 } }, ` (${fmtDay(e.start)}–${fmtDay(e.end)})`),
-          !e.ganztaegig && h("span", { style: { color: theme.textMuted, fontSize: 11 } }, ` (${fmtTime(e.start)} ${fmtDay(e.start)} – ${fmtTime(e.end)} ${fmtDay(e.end)})`)
+          tf("Ganztägig: {titel}", { titel: e.titel }),
+          !sameDay(e.start, e.end) && h("span", { style: { color: theme.textMuted, fontSize: 11 } }, ` (${fmtDay(e.start)}–${fmtDay(e.end)})`)
         ))
       );
     })(),
