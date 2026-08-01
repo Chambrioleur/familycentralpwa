@@ -69,11 +69,20 @@ function buildICS(event: any, uid: string): string {
   const dtend = event.ganztaegig
     ? `DTEND;VALUE=DATE:${toICSDate(event.end_zeit, true)}`
     : `DTEND:${toICSDate(event.end_zeit, false)}`;
-  return [
+  const lines = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Familienzentrale//DE", "BEGIN:VEVENT",
     `UID:${uid}`, `DTSTAMP:${now}`, dtstart, dtend, `SUMMARY:${escapeICS(event.titel)}`,
-    "END:VEVENT", "END:VCALENDAR", "",
-  ].join("\r\n");
+  ];
+  // Recurring series (see EventForm/expandRecurrence in the frontend) —
+  // a single RRULE is enough, Apple expands the occurrences itself.
+  if (event.rrule) lines.push(`RRULE:${event.rrule}`);
+  // Individually skipped occurrences ("delete just this event") as
+  // EXDATE, in the same value type (DATE vs. DATE-TIME) as DTSTART.
+  for (const ex of event.rrule_exdates ?? []) {
+    lines.push(event.ganztaegig ? `EXDATE;VALUE=DATE:${toICSDate(ex, true)}` : `EXDATE:${toICSDate(ex, false)}`);
+  }
+  lines.push("END:VEVENT", "END:VCALENDAR", "");
+  return lines.join("\r\n");
 }
 
 async function findCalendarHref(): Promise<{ origin: string; href: string }> {

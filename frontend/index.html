@@ -679,6 +679,14 @@ const TRANSLATIONS = {
     "Woche": "Week",
     "Wochenplan – landet automatisch im Kalender.": "Weekly plan – lands in the calendar automatically.",
     "Wöchentlich": "Weekly",
+    "Wiederholung": "Repeat",
+    "Keine": "None",
+    "Alle 2 Wochen": "Every 2 weeks",
+    "Endet am (optional)": "Ends on (optional)",
+    '"{titel}" ist Teil einer Wiederholungsserie.': '"{titel}" is part of a recurring series.',
+    "Ganze Serie bearbeiten": "Edit whole series",
+    "Nur diesen Termin löschen": "Delete only this event",
+    "Nur diesen einen Termin aus der Serie löschen?": "Delete just this one event from the series?",
     "Zahlungsempfänger*in": "Payee",
     "Zahlungspflichtige*r": "Payer",
     "Zeitraum": "Period",
@@ -1230,6 +1238,52 @@ function sameDay(a, b) { return isoDate(a) === isoDate(b); }
 function fmtTime(d) { return d.toTimeString().slice(0, 5); }
 function overlaps(a, b) { return a.start < b.end && b.start < a.end; }
 
+// ── Wiederholungsregel (RRULE) — bewusst nur die gängigen Muster, keine
+// vollständige RFC5545-Umsetzung (Wochentagsauswahl, BYDAY etc.) ────────
+const RRULE_FREQ_MAP = { taeglich: "FREQ=DAILY", woechentlich: "FREQ=WEEKLY", alle2wochen: "FREQ=WEEKLY;INTERVAL=2", monatlich: "FREQ=MONTHLY", jaehrlich: "FREQ=YEARLY" };
+function freqKeyToRRule(key, untilDate) {
+  const base = RRULE_FREQ_MAP[key];
+  if (!base) return null;
+  return untilDate ? `${base};UNTIL=${untilDate.replace(/-/g, "")}T235959Z` : base;
+}
+function rruleToFreqKey(rrule) {
+  if (!rrule) return "keine";
+  if (rrule.includes("FREQ=WEEKLY") && rrule.includes("INTERVAL=2")) return "alle2wochen";
+  const found = Object.entries(RRULE_FREQ_MAP).find(([, v]) => rrule.startsWith(v.split(";")[0]));
+  return found ? found[0] : "keine";
+}
+function rruleToUntilDate(rrule) {
+  const m = rrule?.match(/UNTIL=(\d{8})/);
+  return m ? `${m[1].slice(0, 4)}-${m[1].slice(4, 6)}-${m[1].slice(6, 8)}` : "";
+}
+// Falten eine Wiederholungsserie zu einzelnen Terminen im sichtbaren
+// Zeitraum auf — rein fürs Rendern, es entstehen keine neuen Datensätze.
+function expandRecurrence(event, rangeStart, rangeEnd) {
+  const dtstart = new Date(event.start_zeit);
+  const durationMs = new Date(event.end_zeit).getTime() - dtstart.getTime();
+  if (!event.rrule) return [{ start: dtstart, end: new Date(event.end_zeit) }];
+  const parts = {};
+  event.rrule.split(";").forEach((p) => { const [k, v] = p.split("="); parts[k] = v; });
+  const interval = parseInt(parts.INTERVAL || "1", 10) || 1;
+  const until = parts.UNTIL ? new Date(`${parts.UNTIL.slice(0, 4)}-${parts.UNTIL.slice(4, 6)}-${parts.UNTIL.slice(6, 8)}T23:59:59`) : null;
+  const exdates = new Set((event.rrule_exdates || []).map((d) => new Date(d).getTime()));
+  const occurrences = [];
+  let cursor = new Date(dtstart);
+  let guard = 0;
+  while (cursor <= rangeEnd && guard < 500) {
+    guard++;
+    if (until && cursor > until) break;
+    const occEnd = new Date(cursor.getTime() + durationMs);
+    if (occEnd >= rangeStart && !exdates.has(cursor.getTime())) occurrences.push({ start: new Date(cursor), end: occEnd });
+    if (parts.FREQ === "DAILY") cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + interval, cursor.getHours(), cursor.getMinutes(), cursor.getSeconds());
+    else if (parts.FREQ === "WEEKLY") cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7 * interval, cursor.getHours(), cursor.getMinutes(), cursor.getSeconds());
+    else if (parts.FREQ === "MONTHLY") cursor = new Date(cursor.getFullYear(), cursor.getMonth() + interval, cursor.getDate(), cursor.getHours(), cursor.getMinutes(), cursor.getSeconds());
+    else if (parts.FREQ === "YEARLY") cursor = new Date(cursor.getFullYear() + interval, cursor.getMonth(), cursor.getDate(), cursor.getHours(), cursor.getMinutes(), cursor.getSeconds());
+    else break;
+  }
+  return occurrences;
+}
+
 function EventForm({ theme, members, defaultDate, onSave, onCancel, canPrivate, event, onDelete }) {
   const [titel, setTitel] = useState(event?.titel || "");
   const [memberIds, setMemberIds] = useState(event?.member_ids?.length ? event.member_ids : (event?.member_id ? [event.member_id] : []));
@@ -1239,6 +1293,8 @@ function EventForm({ theme, members, defaultDate, onSave, onCancel, canPrivate, 
   const [ende, setEnde] = useState(event && !event.ganztaegig ? event.end_zeit.slice(11, 16) : "10:00");
   const [ganztaegig, setGanztaegig] = useState(event?.ganztaegig || false);
   const [istPrivat, setIstPrivat] = useState(event?.ist_privat || false);
+  const [wiederholung, setWiederholung] = useState(rruleToFreqKey(event?.rrule));
+  const [wiederholungBis, setWiederholungBis] = useState(rruleToUntilDate(event?.rrule));
   const [saving, setSaving] = useState(false);
 
   const toggleMember = (id) => setMemberIds((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
@@ -1264,6 +1320,7 @@ function EventForm({ theme, members, defaultDate, onSave, onCancel, canPrivate, 
     await onSave({
       titel: titel.trim(), member_id: memberIds[0] || null, member_ids: memberIds, start_zeit: startISO,
       end_zeit: endISO, ganztaegig, ist_privat: istPrivat, quelle: "app",
+      rrule: freqKeyToRRule(wiederholung, wiederholungBis || null),
     });
     setSaving(false);
   };
@@ -1286,6 +1343,21 @@ function EventForm({ theme, members, defaultDate, onSave, onCancel, canPrivate, 
     ),
     h("label", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: theme.text } },
       h("input", { type: "checkbox", checked: ganztaegig, onChange: (e) => setGanztaegig(e.target.checked) }), t("Ganztägig")
+    ),
+    h("div", null,
+      h("label", { style: { fontSize: 11, color: theme.textMuted, display: "block", marginBottom: 3 } }, t("Wiederholung")),
+      h("select", { value: wiederholung, onChange: (e) => setWiederholung(e.target.value), style: { width: "100%", backgroundColor: theme.surface, color: theme.text, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } },
+        h("option", { value: "keine" }, t("Keine")),
+        h("option", { value: "taeglich" }, t("Täglich")),
+        h("option", { value: "woechentlich" }, t("Wöchentlich")),
+        h("option", { value: "alle2wochen" }, t("Alle 2 Wochen")),
+        h("option", { value: "monatlich" }, t("Monatlich")),
+        h("option", { value: "jaehrlich" }, t("Jährlich")),
+      ),
+      wiederholung !== "keine" && h("div", { style: { marginTop: 6 } },
+        h("label", { style: { fontSize: 11, color: theme.textMuted, display: "block", marginBottom: 3 } }, t("Endet am (optional)")),
+        h("input", { type: "date", value: wiederholungBis, min: datum, onChange: (e) => setWiederholungBis(e.target.value), style: { backgroundColor: theme.surface, color: theme.text, padding: "8px 10px", borderRadius: 10, border: `1px solid ${theme.border}`, fontSize: 14 } })
+      )
     ),
     h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
       h("div", null,
@@ -1866,14 +1938,20 @@ function eventCoversDay(e, date) {
   const en0 = new Date(e.end); en0.setHours(0, 0, 0, 0);
   return d0 >= s0 && d0 <= en0;
 }
+// Mehrtägige Termine mit Uhrzeit (z. B. "heute 14 Uhr bis Montag 16 Uhr")
+// gehören genau wie ganztägige Termine in die Banner-Zeile statt ins
+// Stunden-Raster — dort ließe sich eine Spanne über mehrere Tage sonst
+// gar nicht sinnvoll darstellen.
+function isSpanningEvent(e) { return e.ganztaegig || !sameDay(e.start, e.end); }
 
-function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDeleteEvent, onUpdateEvent, loading, canEditOthers }) {
+function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDeleteEvent, onDeleteOccurrence, onUpdateEvent, loading, canEditOthers }) {
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date()));
   const [mode, setMode] = useState("week");
   const [selectedDay, setSelectedDay] = useState((new Date().getDay() + 6) % 7);
   const [monthDate, setMonthDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [recurrenceChoice, setRecurrenceChoice] = useState(null);
   const today = new Date();
   const isKid = activeMember.rolle === "kind";
   const viewportWidth = useViewportWidth();
@@ -1883,11 +1961,33 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
   }, []); // eslint: einmalig beim Laden, wie in der Vorlage
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const gridStart = useMemo(() => startOfWeek(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)), [monthDate]);
+  const viewRangeStart = mode === "monat" ? gridStart : weekStart;
+  const viewRangeEnd = mode === "monat" ? addDays(gridStart, 42) : addDays(weekStart, 7);
 
-  const visibleEvents = useMemo(() => events
-    .filter((e) => !e.geloescht && !(isKid && e.ist_privat))
-    .map((e) => ({ ...e, start: new Date(e.start_zeit), end: new Date(e.end_zeit) })),
-    [events, isKid]);
+  // Wiederholungsserien werden nur fürs Rendern zu Einzelvorkommen im
+  // sichtbaren Zeitraum aufgefaltet — der Datensatz bleibt eine Zeile.
+  const visibleEvents = useMemo(() => {
+    const base = events.filter((e) => !e.geloescht && !(isKid && e.ist_privat));
+    const result = [];
+    for (const e of base) {
+      if (e.rrule) {
+        expandRecurrence(e, viewRangeStart, viewRangeEnd).forEach((occ) =>
+          result.push({ ...e, start: occ.start, end: occ.end, occurrenceKey: `${e.id}-${occ.start.toISOString()}` })
+        );
+      } else {
+        result.push({ ...e, start: new Date(e.start_zeit), end: new Date(e.end_zeit), occurrenceKey: e.id });
+      }
+    }
+    return result;
+  }, [events, isKid, viewRangeStart.getTime(), viewRangeEnd.getTime()]);
+
+  const openEvent = (e) => {
+    const isMine = !e.member_id || e.member_id === activeMember.id || (e.member_ids || []).includes(activeMember.id);
+    if (!(canEditOthers || isMine)) return;
+    if (e.rrule) setRecurrenceChoice({ event: e, occurrenceStart: e.start.toISOString() });
+    else setEditingEvent(e);
+  };
 
   const shift = (delta) => {
     if (mode === "monat") {
@@ -1956,6 +2056,23 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
       onSave: async (payload) => { await onUpdateEvent(editingEvent.id, payload); setEditingEvent(null); },
     })),
 
+    recurrenceChoice && h("div", { style: { marginBottom: 16, borderRadius: 16, border: `1px solid ${theme.border}`, backgroundColor: theme.surface, padding: 16, display: "flex", flexDirection: "column", gap: 8 } },
+      h("p", { style: { fontSize: 13, color: theme.text, margin: 0 } }, tf('"{titel}" ist Teil einer Wiederholungsserie.', { titel: recurrenceChoice.event.titel })),
+      h("button", {
+        onClick: () => { setEditingEvent(recurrenceChoice.event); setRecurrenceChoice(null); },
+        style: { padding: "9px 0", borderRadius: 10, backgroundColor: theme.accent, color: theme.accentForeground, fontSize: 13, fontWeight: 600 },
+      }, t("Ganze Serie bearbeiten")),
+      h("button", {
+        onClick: () => {
+          const { event, occurrenceStart } = recurrenceChoice;
+          requestConfirm(t("Nur diesen einen Termin aus der Serie löschen?"), () => onDeleteOccurrence(event.id, occurrenceStart));
+          setRecurrenceChoice(null);
+        },
+        style: { padding: "9px 0", borderRadius: 10, backgroundColor: hexA(theme.destructive, 0.15), color: theme.destructive, fontSize: 13, fontWeight: 500 },
+      }, t("Nur diesen Termin löschen")),
+      h("button", { onClick: () => setRecurrenceChoice(null), style: { padding: "9px 0", borderRadius: 10, backgroundColor: theme.surfaceAlt, color: theme.text, fontSize: 13, fontWeight: 500 } }, t("Abbrechen"))
+    ),
+
     mode !== "monat" && h("div", {
       ref: (el) => {
         if (!el) return;
@@ -1963,7 +2080,7 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
         // Termin des sichtbaren Zeitraums scrollen, damit man nicht immer
         // bei 0:00 startet und manuell runterscrollen muss.
         const allDayEvents = visibleDays.flatMap(({ date }) =>
-          visibleEvents.filter((e) => sameDay(e.start, date) && !e.ganztaegig)
+          visibleEvents.filter((e) => sameDay(e.start, date) && !isSpanningEvent(e))
         );
         let targetHour;
         const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
@@ -2003,7 +2120,7 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
             ))
           ),
           visibleDays.map(({ date, index }) => {
-            const dayEvents = visibleEvents.filter((e) => sameDay(e.start, date) && !e.ganztaegig);
+            const dayEvents = visibleEvents.filter((e) => sameDay(e.start, date) && !isSpanningEvent(e));
             return h("div", { key: index, style: { position: "relative", borderRight: `1px solid ${theme.border}`, height: gridHeight } },
               HOURS.slice(0, -1).map((hr, i) => h("div", { key: hr, style: { position: "absolute", left: 0, right: 0, top: i * HOUR_HEIGHT, borderTop: `1px solid ${theme.border}80` } })),
               dayEvents.map((e) => {
@@ -2013,8 +2130,8 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
                 const height = Math.max(20, (endH - startH) * HOUR_HEIGHT);
                 const color = memberColor(e.member_id);
                 return h("button", {
-                  key: e.id,
-                  onClick: () => { const isMine = !e.member_id || e.member_id === activeMember.id || (e.member_ids || []).includes(activeMember.id); if (canEditOthers || isMine) setEditingEvent(e); },
+                  key: e.occurrenceKey,
+                  onClick: () => openEvent(e),
                   style: {
                     position: "absolute", left: 4, right: 4, top: top + 2, height: height - 4,
                     borderRadius: 8, borderLeft: `2px solid ${color}`, backgroundColor: hexA(color, 0.15),
@@ -2043,13 +2160,13 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
           cells.map((date, i) => {
             const inMonth = date.getMonth() === monthDate.getMonth();
             const isToday = sameDay(date, today);
-            const dayEvents = visibleEvents.filter((e) => e.ganztaegig ? eventCoversDay(e, date) : sameDay(e.start, date));
+            const dayEvents = visibleEvents.filter((e) => isSpanningEvent(e) ? eventCoversDay(e, date) : sameDay(e.start, date));
             return h("button", {
               key: i, onClick: () => goToDay(date),
               style: { minHeight: 84, borderRight: `1px solid ${theme.border}`, borderBottom: `1px solid ${theme.border}`, padding: 6, textAlign: "left", backgroundColor: isToday ? hexA(theme.accent, 0.08) : "transparent", opacity: inMonth ? 1 : 0.4, display: "flex", flexDirection: "column", gap: 3 },
             },
               h("span", { style: { display: "flex", width: 22, height: 22, alignItems: "center", justifyContent: "center", borderRadius: 999, fontSize: 12, fontWeight: 700, fontVariantNumeric: "tabular-nums", backgroundColor: isToday ? theme.accent : "transparent", color: isToday ? theme.accentForeground : theme.text } }, date.getDate()),
-              dayEvents.slice(0, 3).map((e) => h("span", { key: e.id, style: { fontSize: 10, borderRadius: 4, padding: "1px 4px", backgroundColor: hexA(memberColor(e.member_id), 0.18), color: memberColor(e.member_id), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, e.titel)),
+              dayEvents.slice(0, 3).map((e) => h("span", { key: e.occurrenceKey, style: { fontSize: 10, borderRadius: 4, padding: "1px 4px", backgroundColor: hexA(memberColor(e.member_id), 0.18), color: memberColor(e.member_id), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, e.titel)),
               dayEvents.length > 3 && h("span", { style: { fontSize: 10, color: theme.textMuted } }, tf("+{n} weitere", { n: dayEvents.length - 3 }))
             );
           })
@@ -2059,15 +2176,17 @@ function CalendarModule({ theme, members, activeMember, events, onAddEvent, onDe
 
     mode !== "monat" && (() => {
       const seen = new Set();
-      const allDayEvents = visibleDays.flatMap(({ date }) => visibleEvents.filter((e) => e.ganztaegig && eventCoversDay(e, date)))
-        .filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
+      const allDayEvents = visibleDays.flatMap(({ date }) => visibleEvents.filter((e) => isSpanningEvent(e) && eventCoversDay(e, date)))
+        .filter((e) => (seen.has(e.occurrenceKey) ? false : (seen.add(e.occurrenceKey), true)));
+      const fmtDay = (d) => d.toLocaleDateString(locale(), { day: "numeric", month: "numeric" });
       return allDayEvents.length > 0 && h("div", { style: { marginTop: 12, display: "flex", flexDirection: "column", gap: 6 } },
         allDayEvents.map((e) => h("div", {
-          key: e.id, onClick: () => { const isMine = !e.member_id || e.member_id === activeMember.id || (e.member_ids || []).includes(activeMember.id); if (canEditOthers || isMine) setEditingEvent(e); },
+          key: e.occurrenceKey, onClick: () => openEvent(e),
           style: { cursor: "pointer", borderRadius: 8, borderLeft: `3px solid ${memberColor(e.member_id)}`, backgroundColor: theme.surfaceAlt, padding: "6px 10px", fontSize: 13, color: theme.text },
         },
-          tf("Ganztägig: {titel}", { titel: e.titel }),
-          !sameDay(e.start, e.end) && h("span", { style: { color: theme.textMuted, fontSize: 11 } }, ` (${e.start.toLocaleDateString(locale(), { day: "numeric", month: "numeric" })}–${e.end.toLocaleDateString(locale(), { day: "numeric", month: "numeric" })})`)
+          e.ganztaegig ? tf("Ganztägig: {titel}", { titel: e.titel }) : e.titel,
+          e.ganztaegig && !sameDay(e.start, e.end) && h("span", { style: { color: theme.textMuted, fontSize: 11 } }, ` (${fmtDay(e.start)}–${fmtDay(e.end)})`),
+          !e.ganztaegig && h("span", { style: { color: theme.textMuted, fontSize: 11 } }, ` (${fmtTime(e.start)} ${fmtDay(e.start)} – ${fmtTime(e.end)} ${fmtDay(e.end)})`)
         ))
       );
     })(),
@@ -4728,6 +4847,18 @@ function App() {
     pushEventToApple(id, "upsert");
   }, [loadEvents, pushEventToApple]);
 
+  // Einen einzelnen Termin aus einer Wiederholungsserie auslassen, ohne
+  // die restliche Serie zu beenden — landet als EXDATE im ICS.
+  const deleteEventOccurrence = useCallback(async (id, occurrenceStartISO) => {
+    const { data: current, error: fetchErr } = await supabase.from("calendar_events").select("rrule_exdates").eq("id", id).maybeSingle();
+    if (fetchErr) { setBanner(fetchErr.message); return; }
+    const next = [...(current?.rrule_exdates || []), occurrenceStartISO];
+    const { error } = await supabase.from("calendar_events").update({ rrule_exdates: next }).eq("id", id);
+    if (error) { setBanner(error.message); return; }
+    loadEvents();
+    pushEventToApple(id, "upsert");
+  }, [loadEvents, pushEventToApple]);
+
   // ── Aufgaben ──────────────────────────────────────────────
   const [tasks, setTasks] = useState([]);
   const loadTasks = useCallback(async () => {
@@ -5258,12 +5389,14 @@ function App() {
     events.filter((e) => !e.geloescht && e.titel?.toLowerCase().includes(q)).slice(0, 5).forEach((e) => results.push({ type: t("Termin"), title: e.titel, sub: e.start_zeit?.slice(0, 10), tab: "kalender" }));
     tasks.filter((tk) => !tk.geloescht && tk.titel?.toLowerCase().includes(q)).slice(0, 5).forEach((tk) => results.push({ type: t("Aufgabe"), title: tk.titel, sub: tk.status, tab: "aufgaben" }));
     reminders.filter((r) => r.titel?.toLowerCase().includes(q)).slice(0, 5).forEach((r) => results.push({ type: t("Erinnerung"), title: r.titel, sub: r.faelligkeit, tab: "erinnerungen" }));
+    shoppingItems.filter((s) => !s.geloescht && s.titel?.toLowerCase().includes(q)).slice(0, 5).forEach((s) => results.push({ type: t("Einkauf"), title: s.titel, sub: s.menge, tab: "einkauf" }));
+    financeEntries.filter((f) => f.notiz?.toLowerCase().includes(q) || f.kategorie?.toLowerCase().includes(q)).slice(0, 5).forEach((f) => results.push({ type: t("Finanzen"), title: f.notiz || f.kategorie, sub: `${Number(f.betrag).toFixed(2)} €`, tab: "finanzen" }));
     documents.filter((d) => d.name?.toLowerCase().includes(q)).slice(0, 5).forEach((d) => results.push({ type: t("Dokument"), title: d.name, sub: d.kategorie, tab: "dokumente" }));
     contacts.filter((c) => c.name?.toLowerCase().includes(q) || c.rolle?.toLowerCase().includes(q)).slice(0, 5).forEach((c) => results.push({ type: t("Kontakt"), title: c.name, sub: c.rolle, tab: "kontakte" }));
     recipes.filter((r) => r.titel?.toLowerCase().includes(q)).slice(0, 5).forEach((r) => results.push({ type: t("Rezept"), title: r.titel, sub: r.kategorie, tab: "rezepte" }));
     wikiEntries.filter((w) => w.titel?.toLowerCase().includes(q) || w.inhalt?.toLowerCase().includes(q)).slice(0, 5).forEach((w) => results.push({ type: t("Wissen"), title: w.titel, tab: "wissen" }));
     return results;
-  }, [searchQuery, events, tasks, reminders, documents, contacts, recipes, wikiEntries, langName]);
+  }, [searchQuery, events, tasks, reminders, shoppingItems, financeEntries, documents, contacts, recipes, wikiEntries, langName]);
 
   // ── Aktivitäts-Feed ───────────────────────────────────────
   const [activityLog, setActivityLog] = useState([]);
@@ -5534,7 +5667,7 @@ function App() {
               householdTasks, householdAssignees, householdCompletions,
             })
           : activeTab === "kalender"
-          ? h(CalendarModule, { theme, members, activeMember, events, onAddEvent: addEvent, onDeleteEvent: deleteEvent, onUpdateEvent: updateEvent, loading: eventsLoading, canEditOthers: canEditOthers("kalender") })
+          ? h(CalendarModule, { theme, members, activeMember, events, onAddEvent: addEvent, onDeleteEvent: deleteEvent, onDeleteOccurrence: deleteEventOccurrence, onUpdateEvent: updateEvent, loading: eventsLoading, canEditOthers: canEditOthers("kalender") })
           : activeTab === "aufgaben"
           ? h(TasksModule, { theme, members, activeMember, tasks, onAdd: addTask, onToggle: toggleTask, onDelete: deleteTask, onUpdate: updateTask, canEditOthers: canEditOthers("aufgaben") })
           : activeTab === "erinnerungen"
