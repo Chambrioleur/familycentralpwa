@@ -27,7 +27,9 @@
   #root { height: 100vh; height: 100dvh; height: var(--app-height, 100dvh); overflow: hidden; }
   @keyframes fz-spin { to { transform: rotate(360deg); } }
   .fz-spinner { animation: fz-spin 0.8s linear infinite; }
-  @media (prefers-reduced-motion: reduce) { .fz-spinner { animation: none; } }
+  @keyframes fz-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .fz-fade-in { animation: fz-fade-in 0.18s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .fz-spinner, .fz-fade-in { animation: none; } }
 </style>
 </head>
 <body>
@@ -1131,6 +1133,47 @@ function EmptyState({ theme, icon, title, hint }) {
   );
 }
 
+// Swipe-to-delete on touch devices (Mail/Reminders pattern): drags the
+// row left with a finger and reveals a delete button behind it — the
+// swipe alone never deletes, tapping the button confirms. Touch events
+// only, deliberately no mouse equivalent (desktop already has the X
+// button in the row).
+function SwipeableRow({ theme, onDelete, children, style }) {
+  const [dragX, setDragX] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const dragging = useRef(false);
+  const startX = useRef(null);
+  const ACTION_WIDTH = 76;
+
+  if (!onDelete) return h("div", { style }, children);
+
+  const onTouchStart = (e) => { startX.current = e.touches[0].clientX; dragging.current = true; };
+  const onTouchMove = (e) => {
+    if (!dragging.current || startX.current === null) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const base = revealed ? -ACTION_WIDTH : 0;
+    setDragX(Math.max(-ACTION_WIDTH, Math.min(0, base + dx)));
+  };
+  const onTouchEnd = () => {
+    dragging.current = false;
+    startX.current = null;
+    const shouldReveal = dragX < -ACTION_WIDTH / 2;
+    setRevealed(shouldReveal);
+    setDragX(shouldReveal ? -ACTION_WIDTH : 0);
+  };
+
+  return h("div", { style: { position: "relative", overflow: "hidden", borderRadius: 12, ...style } },
+    h("button", {
+      onClick: () => { setRevealed(false); setDragX(0); onDelete(); },
+      style: { position: "absolute", top: 0, right: 0, bottom: 0, width: ACTION_WIDTH, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.destructive, color: "#fff", fontSize: 12, fontWeight: 600 },
+    }, t("Löschen")),
+    h("div", {
+      onTouchStart, onTouchMove, onTouchEnd,
+      style: { position: "relative", backgroundColor: theme.surface, transform: `translateX(${dragX}px)`, transition: dragging.current ? "none" : "transform 0.2s ease" },
+    }, children)
+  );
+}
+
 // Global confirmation-dialog system: replaces window.confirm() (an ugly
 // native browser dialog) with a styled modal, without having to thread
 // props through every caller. requestConfirm() can be called from
@@ -1536,9 +1579,13 @@ function TasksModule({ theme, members, activeMember, tasks, onAdd, onToggle, onD
         onCancel: () => setEditingId(null),
         onSave: async (fields) => { await onUpdate(task.id, fields); setEditingId(null); },
       })
-    : h("div", {
-        key: task.id,
-        style: { display: "flex", alignItems: "flex-start", gap: 10, borderRadius: 12, border: `1px solid ${theme.border}`, borderLeft: `3px solid ${prioColor(theme, task.prioritaet || "mittel")}`, backgroundColor: theme.surface, padding: 12 },
+    : h(SwipeableRow, {
+        key: task.id, theme,
+        onDelete: (canEditOthers || !task.member_id || task.member_id === activeMember?.id) ? (() => requestConfirm(t("Aufgabe löschen?"), () => onDelete(task.id))) : null,
+        style: { borderRadius: 12, border: `1px solid ${theme.border}`, borderLeft: `3px solid ${prioColor(theme, task.prioritaet || "mittel")}` },
+      },
+      h("div", {
+        style: { display: "flex", alignItems: "flex-start", gap: 10, backgroundColor: theme.surface, padding: 12 },
       },
         h("button", { onClick: () => complete(task), style: { marginTop: 2, display: "flex", width: 20, height: 20, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 999, border: `1px solid ${theme.border}`, backgroundColor: task.status === "erledigt" ? theme.accent : "transparent" } }, task.status === "erledigt" && React.createElement(Check, { size: 12, color: theme.accentForeground })),
         h("div", { onClick: () => { if (canEditOthers || !task.member_id || task.member_id === activeMember?.id) setEditingId(task.id); }, style: { minWidth: 0, flex: 1, cursor: (canEditOthers || !task.member_id || task.member_id === activeMember?.id) ? "pointer" : "default" } },
@@ -1552,7 +1599,7 @@ function TasksModule({ theme, members, activeMember, tasks, onAdd, onToggle, onD
           )
         ),
         (canEditOthers || !task.member_id || task.member_id === activeMember?.id) && h("button", { onClick: () => requestConfirm(t("Aufgabe löschen?"), () => onDelete(task.id)), style: { flexShrink: 0, fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
-      );
+      ));
 
   return h("div", { style: { maxWidth: 1152, margin: "0 auto", width: "100%" } },
     h(PageHead, {
@@ -1835,14 +1882,16 @@ function ShoppingModule({ theme, items, lists, activeListId, onSelectList, onCre
         [...offen, ...erledigt].map((item, i) => editingId === item.id
           ? h(ShoppingEditRow, { key: item.id, theme, item, onCancel: () => setEditingId(null), onSave: async (fields) => { await onUpdate(item.id, fields); onLearnSuggestion?.(fields.titel, fields.einheit); setEditingId(null); } })
           : h("li", { key: item.id, style: { borderTop: i > 0 ? `1px solid ${theme.border}99` : "none" } },
-              h("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "10px 0" } },
-                h("button", { onClick: () => onToggle(item.id, !item.erledigt), style: {
-                  display: "flex", width: 20, height: 20, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 999,
-                  border: `1px solid ${item.erledigt ? theme.accent : theme.border}`, backgroundColor: item.erledigt ? theme.accent : "transparent", color: theme.accentForeground,
-                } }, item.erledigt && React.createElement(Check, { size: 12 })),
-                h("span", { onClick: () => setEditingId(item.id), style: { flex: 1, fontSize: 15, color: item.erledigt ? theme.textMuted : theme.text, textDecoration: item.erledigt ? "line-through" : "none", cursor: "pointer" } }, item.titel),
-                (item.menge || item.einheit) && h("span", { style: { fontSize: 13, color: theme.textMuted, fontVariantNumeric: "tabular-nums" } }, [item.menge, item.einheit].filter(Boolean).join(" ")),
-                h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(item.id)), style: { fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+              h(SwipeableRow, { theme, style: { borderRadius: 0 }, onDelete: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(item.id)) },
+                h("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "10px 0" } },
+                  h("button", { onClick: () => onToggle(item.id, !item.erledigt), style: {
+                    display: "flex", width: 20, height: 20, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 999,
+                    border: `1px solid ${item.erledigt ? theme.accent : theme.border}`, backgroundColor: item.erledigt ? theme.accent : "transparent", color: theme.accentForeground,
+                  } }, item.erledigt && React.createElement(Check, { size: 12 })),
+                  h("span", { onClick: () => setEditingId(item.id), style: { flex: 1, fontSize: 15, color: item.erledigt ? theme.textMuted : theme.text, textDecoration: item.erledigt ? "line-through" : "none", cursor: "pointer" } }, item.titel),
+                  (item.menge || item.einheit) && h("span", { style: { fontSize: 13, color: theme.textMuted, fontVariantNumeric: "tabular-nums" } }, [item.menge, item.einheit].filter(Boolean).join(" ")),
+                  h("button", { onClick: () => requestConfirm(t("Wirklich löschen?"), () => onDelete(item.id)), style: { fontSize: 12, color: theme.textMuted, background: "none" } }, React.createElement(X, { size: 14 }))
+                )
               )
             ))
       )
@@ -5679,7 +5728,7 @@ function App() {
           )
         )
       ),
-      h("main", { style: { flex: 1, display: "flex", flexDirection: "column", padding: isPhone ? "16px" : "24px 24px 32px", overflowY: "auto", minHeight: 0 } },
+      h("main", { key: activeTab, className: "fz-fade-in", style: { flex: 1, display: "flex", flexDirection: "column", padding: isPhone ? "16px" : "24px 24px 32px", overflowY: "auto", minHeight: 0 } },
         activeTab === "uebersicht"
           ? h(OverviewModule, {
               theme, activeMember, members, tasks, reminders, events, shoppingItems, documents, upcomingBirthdays,
